@@ -1,0 +1,24 @@
+
+node_modules
+# Keep environment variables out of version control
+.env
+
+# General
+.DS_Store
+*.log
+
+# IDE and Environment files
+.vscode/
+.idea/
+.env
+.env.*
+
+# Dependencies for ALL packages
+# The wildcard ** matches any subdirectory
+**/node_modules
+# Build output for ALL packages
+**/dist
+**/build
+.next/
+
+/generated/prisma

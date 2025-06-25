@@ -1,0 +1,22 @@
+{
+  "name": "tpr-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The main workspace for the TPR project, containing both the frontend and backend applications.",
+  "workspaces": [
+    "packages/frontend",
+    "packages/backend"
+  ],
+  "scripts": {
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "dev:backend": "npm run dev --workspace=backend",
+    "build:frontend": "npm run build --workspace=frontend",
+    "build:backend": "npm run build --workspace=backend",
+    "install:all": "npm install --workspace=frontend && npm install --workspace=backend"
+  },
+  "devDependencies": {
+    "prettier": "^3.0.0",
+    "eslint": "^8.0.0",
+    "typescript": "^5.0.0"
+  }
+}
