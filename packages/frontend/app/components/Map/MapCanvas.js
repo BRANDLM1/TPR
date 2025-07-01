@@ -2,10 +2,11 @@
 
 import {Map} from 'react-map-gl/mapbox';
 
-const MapCanvas = () => {
+const MapCanvas = ({accessToken}) => {
     return(
-        <Map reuseMaps 
-            mapboxAccessToken="pk.eyJ1IjoiYnJhbmRsbTEiLCJhIjoiY21jZjJhOWRoMDQyMzJrcHczajg3d3k5ZyJ9.SYbETionaXfYOR8_46Me3w"
+        <Map 
+            reuseMaps
+            mapboxAccessToken={accessToken}
             initialViewState={{
                 longitude: -105.8,
                 latitude: 39.5,
