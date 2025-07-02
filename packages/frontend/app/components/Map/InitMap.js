@@ -7,7 +7,7 @@ export default function InitMap() {
 
     if (!shopwMap) {
       return(
-      <div className="flex flex-col justify-center items-center bg-gray-800 text-white py-20 rounded-lg shadow-lg">
+      <div className="w-full h-full flex flex-col justify-center items-center bg-gray-800 text-white py-20 rounded-lg shadow-lg">
         <h1 className="text-5xl font-bold mb-4">Welcome to Vision 2035</h1>
         <p className="text-xl mb-8">Ready to explore the map?</p>
         <button
@@ -23,7 +23,7 @@ export default function InitMap() {
     
   // Else render map if showMap is true
   return (
-    <div className="w-full h-[600px]">
+    <div className="w-full h-full">
       <MapCanvas accessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN} />
     </div>
   );
