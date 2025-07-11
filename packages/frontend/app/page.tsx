@@ -1,16 +1,13 @@
 import InitMap from "./components/Map/InitMap"
-import Hero from "./components/Hero"
+import Nav from "./components/Global/Nav"
 export default function Home() {
   return(
-    <div className="w-screen h-screen bg-blue-100 text-black">
-      
-      {/* Hero */}
-      <Hero/>
+    <div className="relative w-screen h-screen bg-blue-100 text-black overflow-hidden">
 
-      {/* Map */}
-      <section className="h-[950px] w-450 mx-auto flex mt-20">
-          <InitMap />
-      </section>
+        
+        <InitMap />
+
+        <Nav/>
 
     </div>
   );
