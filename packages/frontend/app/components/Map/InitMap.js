@@ -21,7 +21,7 @@ export default function InitMap() {
               className="bg-amber-300 text-black font-bold py-6 px-10 text-2xl shadow-md hover:bg-amber-400 transition-transform hover:scale-105"
               style={{cursor:'pointer'}}
             >
-              Explore our visions
+              Explore Our Campaign
             </button>
         </FadeIn>
 
