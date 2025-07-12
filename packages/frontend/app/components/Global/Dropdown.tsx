@@ -8,14 +8,12 @@ const Dropdown = () => {
   
   const defaultSelect = visionOptions[0];
   const [isLoading, setIsLoading] = useState(defaultSelect.value === '0');
-  const [menuIsOpen, setMenuIsOpen] = useState(false);
   const [selectedOption, setSelectedOption] = useState(defaultSelect);
 
   const onInputChange = (
     inputValue: string, {action}: InputActionMeta) => {
     if (action === 'input-change'){
       setIsLoading(false);
-      setMenuIsOpen(false);
     }
     return inputValue;
   };
