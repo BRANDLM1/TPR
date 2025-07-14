@@ -14,7 +14,8 @@ export default function MapContainer() {
       style: 'mapbox://styles/mapbox/outdoors-v11',
       center: [-105.8, 39.5],
       zoom: 6,
-      "bbox": [ -125.0011, 24.9493, -66.9326, 49.5904 ]
+      maxBounds: [-129.533,24.132,-66.896,52.180],
+      // minZoom: 1,
 
     });
 

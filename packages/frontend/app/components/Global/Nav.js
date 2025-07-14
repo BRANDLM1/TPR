@@ -12,12 +12,12 @@ export default function Nav() {
     if (!shopwMap) {
       return(        
         <nav className="fixed border-3 border-black top-0 left-0 z-50 w-full bg-white-100 backdrop-blur shadow-md">
-          <div className = "flex items-center justify-between px-12 py-2">
+          <div className = "flex items-center justify-between px-12 py-4">
             <div className="flex items-center space-x-6">
                 <img src={'./media/pictures/logo.png'} width="135" height="135"/>
             
-            <h1 className="text-7xl font-fell ml-8 text-black">The Tipi Raisers</h1>
-            <div className= 'py-6 px-10 text-4xl'>
+            <h1 className="relative text-7xl font-fell ml-8 text-black">The Tipi Raisers</h1>
+            <div className= 'absolute top-30 left-60 text-4xl'>
             <Dropdown/>
             </div>
             </div>

@@ -40,7 +40,7 @@ const Dropdown = () => {
 
       <div
         style={{
-          color: 'hsl(0, 0%, 40%)',
+          color: 'hsl(70, 50%, 40%)',
           display: 'inline-block',
           fontSize: 10,
           fontStyle: 'bold',
