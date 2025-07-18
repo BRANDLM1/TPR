@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 const Dropdown = dynamic(() => import('./Dropdown'), { ssr: false });
 
 export default function Nav() {
-  const [shopwMap, setShowMap] = useState(false);
+  const [shopwMap] = useState(false);
 
 
     if (!shopwMap) {
