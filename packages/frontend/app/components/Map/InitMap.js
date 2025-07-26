@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import MapCanvas from "./MapCanvas"
 import FadeIn from '../Animations/FadeIn'
-import Nav from '../Global/Nav'
 import IntroModal from '../Map/Layers/Main/IntroModal'
 
 export default function InitMap() {
@@ -44,7 +43,6 @@ export default function InitMap() {
   // Else render map if showMap is true
   return (
     <div className="w-full h-full">
-      <Nav/>
       <IntroModal/>
       <MapCanvas accessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN} />
     </div>

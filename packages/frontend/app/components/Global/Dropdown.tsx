@@ -1,18 +1,29 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Select from 'react-select';
 import visionOptions from './visionOptions';
 
-const Dropdown = ({onChange}: { onChange: (value: string) => void }) => {
-  const defaultSelect = visionOptions[0];
-  const [selectedOption, setSelectedOption] = useState(defaultSelect);
+type OptionType = {
+  value: string;
+  label: string;
+  };
+  
+const Dropdown = ({value, onChange}: { 
+  value: string | null; 
+  onChange: (value: string) => void;
+}) => {
+  // Find the selected option object based on the value string
+  const selectedOption = visionOptions.find((option) => option.value === value) || null;
 
-  const handleChange = (option: any) => {
-    if (option){
-      setSelectedOption(option);
-      onChange(option.value);
-    }
+  console.log('[Dropdown] Rendering with value:', value);
+  console.log('[Dropdown] Matched selectedOption:', selectedOption);
+
+  const handleChange = (option: OptionType | null) => {
+    if (option && typeof onChange === 'function'){
+        console.log("Dropdown.handleChange fired with:", option.value);
+        onChange(option.value);
+      }
   };
 
   return (

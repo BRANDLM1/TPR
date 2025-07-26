@@ -3,6 +3,7 @@
 import { ReactNode } from 'react';
 import { MantineProvider } from '@mantine/core';
 import { ModalsProvider } from '@mantine/modals';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 import {Lato, IM_Fell_English_SC} from "next/font/google";
 import "./globals.css";

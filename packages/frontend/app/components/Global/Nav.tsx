@@ -1,11 +1,8 @@
 'use client';
 import React from 'react';
 import { useState } from 'react';
-import dynamic from 'next/dynamic';
 
-const Dropdown = dynamic(() => import('./Dropdown'), { ssr: false });
-
-export default function Nav() {
+export default function Nav({ children }: { children?: React.ReactNode }) {
   const [shopwMap] = useState(false);
 
 
@@ -17,9 +14,9 @@ export default function Nav() {
                 <img src={'./media/pictures/logo.png'} width="135" height="135"/>
             
             <h1 className="relative text-7xl font-fell ml-8 text-black">The Tipi Raisers</h1>
-            <div className= 'absolute top-30 left-60 text-4xl'>
-            <Dropdown/>
-            </div>
+            {/* <div className= ' top-30 left-60 text-xl'> */}
+            {children}
+            {/* </div> */}
             </div>
             
             <div className="flex space-x-4">
@@ -47,11 +44,4 @@ export default function Nav() {
         
       );
     }
-    
-  // Else render map if showMap is true
-  return (
-    <div className="w-full h-full">
-      <MapCanvas accessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN} />
-    </div>
-  );
 }
