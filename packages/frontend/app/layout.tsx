@@ -1,5 +1,6 @@
 'use client';
-
+import { ApolloProvider } from '@apollo/client';
+import { client } from './lib/apollo';
 import { ReactNode } from 'react';
 import { MantineProvider } from '@mantine/core';
 import { ModalsProvider } from '@mantine/modals';
@@ -25,16 +26,18 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body className={`${fell.variable} ${lato.variable} antialiased`}>
-        <MantineProvider 
-            theme={{
-              fontFamily: 'var(--font-lato)',
-              headings: { fontFamily: 'var(--font-fell)' },
-            }}
-        >
-          <ModalsProvider>
-            {children}
-          </ModalsProvider>
-        </MantineProvider>
+        <ApolloProvider client={client}>
+          <MantineProvider 
+              theme={{
+                fontFamily: 'var(--font-lato)',
+                headings: { fontFamily: 'var(--font-fell)' },
+              }}
+          >
+            <ModalsProvider>
+              {children}
+            </ModalsProvider>
+          </MantineProvider>
+        </ApolloProvider>
       </body>
     </html>
   );

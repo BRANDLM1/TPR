@@ -2,9 +2,9 @@
 import {useRef, useEffect, useState, useCallback} from 'react';
 import mapboxgl from 'mapbox-gl';
 import layerGroups from './LayerGroup';
-import StoryConfig, { Step } from './StoryGroup';
-import { StoryContent } from './StoryContent'
 import StoryModal from './StoryModal';
+import { useQuery } from '@apollo/client';
+import { GET_STORY_BY_ID } from '../../lib/queries';
 import Nav from '../Global/Nav';
 import dynamic from 'next/dynamic'
 const Dropdown = dynamic(() => import('../Global/Dropdown'), {ssr: false});
@@ -26,6 +26,10 @@ export default function MapContainer() {
     currentStory: null,
     currentStep: 0,
     showModal: false
+  });
+  const { loading, error, data: storyData } = useQuery(GET_STORY_BY_ID, {
+    variables: { id: VisionState.currentStory }, // Pass the selected story ID
+    skip: !VisionState.currentStory, // IMPORTANT: Don't run the query until a story is selected
   });
   
   useEffect(() => {
@@ -67,6 +71,50 @@ export default function MapContainer() {
           }
       })
 
+      map.addSource('dynamic-points-source',{
+        type:'geojson',
+        data: {type :'FeatureCollection', features: []},
+      });
+      map.addLayer({
+        id: 'dynamic-points-layer',
+        source: 'dynamic-points-source',
+        type: 'circle',
+        paint: { 'circle-color' : '#ff0000', 'circle-radius': 8 }
+      });
+
+      map.on('click', 'dynamic-points-layer', (e) => {
+       
+      if (!e.features || e.features.length === 0) return;
+    
+      const feature = e.features[0];
+
+      if (!feature.properties || feature.geometry.type !== 'Point') return;
+
+      const coordinates = feature.geometry.coordinates.slice() as [number,number];
+      const name = feature.properties.name || 'Details';
+      const description = feature.properties.description || null;
+      const link = feature.properties.link || null;
+      
+      // Ensure coordinates are not modified while being used
+      while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+        coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+      }
+
+      new mapboxgl.Popup()
+        .setLngLat(coordinates)
+        .setHTML(`<h3>${name}</h3><p>${description}</p> <p>${link}</p>`)
+        .addTo(map);
+    });
+
+    
+    // Change the cursor to a pointer when over the points
+    map.on('mouseenter', 'dynamic-points-layer', () => {
+      map.getCanvas().style.cursor = 'pointer';
+    });
+    map.on('mouseleave', 'dynamic-points-layer', () => {
+      map.getCanvas().style.cursor = '';
+    });
+
       Object.values(layerGroups).flat().forEach(({id, sourceId, source, layer}) => {
         if(!map.getSource(sourceId)){
           map.addSource(sourceId, source);
@@ -86,9 +134,10 @@ export default function MapContainer() {
 
   // Handle modal "Next" button
   const handleStoryNext = useCallback(() => {
-    if (!VisionState.currentStory) return;
+    if (!storyData || !storyData.story) return;
     
-    const story = StoryConfig[VisionState.currentStory];
+    const story = storyData.story;
+
     const currentStepConfig = story.steps[VisionState.currentStep];
     
     // Apply layer changes when user clicks Next
@@ -111,14 +160,14 @@ export default function MapContainer() {
         showModal: false,
       }));
     }
-  }, [VisionState]);
+  }, [VisionState, storyData]);
 
   // Handle going back
   const handleStoryBack = useCallback(() => {
-    if (!VisionState.currentStory || VisionState.currentStep === 0) return;
+    if (!storyData || !storyData.story || VisionState.currentStep === 0) return;
     
+    const story = storyData.story;
     const prevStepIndex = VisionState.currentStep - 1;
-    const story = StoryConfig[VisionState.currentStory];
     const prevStepConfig = story.steps[prevStepIndex];
     
     // Revert to previous step's layers
@@ -129,10 +178,10 @@ export default function MapContainer() {
       currentStep: prevStepIndex,
       showModal: true
     }));
-  }, [VisionState]);
+  }, [VisionState, storyData]);
 
   // Apply layer visibility changes
-  const applyLayerChanges = (stepConfig: Step) => {
+  const applyLayerChanges = (stepConfig: { layersToShow: string[]; layersToHide: string[] }) => {
       
     const map = mapRef.current;
     if (!map || !map.isStyleLoaded()) return;
@@ -181,23 +230,39 @@ export default function MapContainer() {
 
   // Get current modal content
   const getCurrentModalContent = () => {
-    const storyKey = VisionState.currentStory;
-
-    if (!storyKey || !VisionState.showModal) return null;
     
-    const story = StoryConfig[storyKey];
+    if (loading) 
+      return {
+      title: 'Loading...', 
+      content: '', 
+      media: undefined,
+      canGoBack: false,
+      isLastStep: false,
+      };
+    if (error) 
+      return {
+      title: 'Error', 
+      content: 'Could not load story.', 
+      media: undefined,
+      canGoBack: false,
+      isLastStep: false,
+      };
+  
+    if (!storyData || !storyData.story || !VisionState.showModal) return null;
 
-    if (!story) { console.warn(`No story found for key: ${storyKey}`); }
-    if (!story || !story.steps || !story.steps[VisionState.currentStep]) return null;
-
-    const currentStepConfig = story.steps[VisionState.currentStep];    
-    const contentData = StoryContent[currentStepConfig.modalContent];
+    const currentStepConfig = storyData.story.steps[VisionState.currentStep];
+    if (!currentStepConfig) return null;
 
     return {
-      ...contentData,
-      nextButtonText: currentStepConfig.nextButtonText,
+      title: currentStepConfig.title,
+      content: currentStepConfig.content,
+      media: {
+        type: currentStepConfig.mediaType,
+        src: currentStepConfig.mediaSrc,
+      },
+      nextButtonText: currentStepConfig.nextButtonText || 'Continue',
       canGoBack: VisionState.currentStep > 0,
-      isLastStep: VisionState.currentStep === story.steps.length - 1
+      isLastStep: VisionState.currentStep === storyData.story.steps.length - 1
     };
   };
 

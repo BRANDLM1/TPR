@@ -1,0 +1,47 @@
+# Central Query Object
+type Story {
+  id: ID!
+  title: String!
+  steps: [StoryStep!]!
+  stats: [ImpactStats!]!
+}
+
+type ImpactStats {
+  id:ID!
+  title: String!
+  statistic: Int!
+  content: String!
+  link: String!
+}
+
+type StoryStep {
+  id: ID!
+  title: String!
+  content: String!
+  link: String!
+  mediaType: String! # 'image' or 'video'
+  mediaSrc: String!
+  layersToShow: [String!]! # An array of Mapbox layer IDs, ex: ["ghost-bison-range"]
+  layersToHide: [String!]!
+  dynamicPoints: [GeoJsonPointFeature];
+  nextButtonText: String
+}
+
+type GeoJsonPointFeature {
+  type: String!
+  geometry: Point!
+  properties: DynamicPointProperties!
+}
+type Point {
+  type: String! #Always 'Point'
+  coordinates: [Float!]! #[long, lat] array
+}
+type DynamicPointProperties {
+  name: String!
+  description: String!
+}
+
+# Fetch story query
+type Query {
+  story(id: String!): Story
+ }

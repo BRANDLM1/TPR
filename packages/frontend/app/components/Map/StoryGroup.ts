@@ -1,8 +1,11 @@
 interface Step{
   id: number;
-  modalContent: string;
-  layersToHide: string[];
-  layersToShow: string[];
+  title: string;
+    content: string;
+    mediaType: string;
+    mediaSrc: string;
+    layersToHide: string[];
+    layersToShow: string[];
   nextButtonText?: string;
 }
 
@@ -20,42 +23,45 @@ const StoryConfig: Record<string, Story> = {
     steps: [
       {
         id: 0,
-        modalContent: 'bison-intro',
+        title: 'bison-intro',
+        content: 'hello world',
+        mediaType: 'media type string',
+        mediaSrc: 'media src string',
         layersToShow: [],
         layersToHide: [],
         nextButtonText: 'Continue'
       },
-      {
-        id: 1,
-        modalContent: 'bison-h1',
-        layersToShow: ['country-boundaries', 'roads'],
-        layersToHide: [],
-        nextButtonText: 'Continue'
-      },
-      {
-        id: 2,
-        modalContent: 'bison-h2',
-        layersToShow: [],
-        layersToHide: [],
-        nextButtonText: 'Continue'
-      },
-      {
-        id: 3,
-        modalContent: 'bison-h3',
-        layersToShow: [],
-        layersToHide: [],
-        nextButtonText: 'Continue'
-      },
-      {
-        id: 4,
-        modalContent: 'bison-current',
-        layersToShow: [],
-        layersToHide: [],
-        nextButtonText: 'Explore'
-      },
+      // {
+      //   id: 1,
+      //   modalContent: 'bison-h1',
+      //   layersToShow: ['country-boundaries', 'roads'],
+      //   layersToHide: [],
+      //   nextButtonText: 'Continue'
+      // },
+      // {
+      //   id: 2,
+      //   modalContent: 'bison-h2',
+      //   layersToShow: [],
+      //   layersToHide: [],
+      //   nextButtonText: 'Continue'
+      // },
+      // {
+      //   id: 3,
+      //   modalContent: 'bison-h3',
+      //   layersToShow: [],
+      //   layersToHide: [],
+      //   nextButtonText: 'Continue'
+      // },
+      // {
+      //   id: 4,
+      //   modalContent: 'bison-current',
+      //   layersToShow: [],
+      //   layersToHide: [],
+      //   nextButtonText: 'Explore'
+      // },
     ]
   }
 };
-export type { Step, Story };
-export default StoryConfig
+export type { Story , Step };
+// export default StoryConfig
 

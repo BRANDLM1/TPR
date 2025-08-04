@@ -1,6 +1,3 @@
-// This is your Prisma schema file.
-// It has been updated to match the logic from your 01_create_schema.sql file.
-
 generator client {
   provider = "prisma-client-js"
   previewFeatures = ["extendedIndexes"] 
