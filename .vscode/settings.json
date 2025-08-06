@@ -14,17 +14,8 @@
             "server": "localhost",
             "port": 5432,
             "driver": "PostgreSQL",
-            "name": "Impact DB",
-            "database": "impactDB",
-            "username": "postgres"
-        },
-        {
-            "previewLimit": 50,
-            "server": "localhost",
-            "port": 5432,
-            "driver": "PostgreSQL",
-            "name": "Impact DB Shadow",
-            "database": "impactDB_shadow",
+            "name": "Tipi Raisers DB",
+            "database": "TPRDB",
             "username": "postgres"
         }
     ]

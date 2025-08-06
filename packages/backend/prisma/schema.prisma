@@ -1,59 +1,59 @@
 generator client {
   provider = "prisma-client-js"
-  previewFeatures = ["extendedIndexes"] 
 }
 
 datasource db {
-  provider          = "postgresql"
-  url               = env("DATABASE_URL")
+  provider = "postgresql"
+  url = env("DATABASE_URL")
 }
 
-enum MediaType{
+enum MediaType {
   IMAGE
   VIDEO
 }
+
 model Story {
-  id         String     @id @default(cuid())
-  title      String 
-  steps      StoryStep[]
-  dynamicStats   ImpactStat[]
+  id           String       @id @default(cuid())
+  title        String
+  steps        StoryStep[]
+  dynamicStats ImpactStat[]
 }
 
 model ImpactStat {
-  id         Int     @id @default(autoincrement())
-  order:     Int!
+  id         Int         @id @default(autoincrement())
+  order      Int
   title      String
   statistic  Int
   content    String?
   mediaItems MediaItem[]
   link       String?
   storyId    String
-  story      Story @relation(fields: [storyId], references: [id])
+  story      Story       @relation(fields: [storyId], references: [id])
 }
 
 model StoryStep {
-  id          Int     @id @default(autoincrement())
-  order:      Int
-  title       String
-  content     String
-  link        String?
-  mediaItems  MediaItem[]   
-  layersToShow  String[]
-  layersToHide  String[]
-  dynamicPoints DynamicPoint[]?
-  nextButtonText  String?
+  id             Int            @id @default(autoincrement())
+  order          Int
+  title          String
+  content        String
+  link           String?
+  mediaItems     MediaItem[]
+  layersToShow   String[]
+  layersToHide   String[]
+  dynamicPoints  DynamicPoint[]
+  nextButtonText String?
   zoom           Float?
   latitude       Float?
   longitude      Float?
-  pitch          Float?  // For a 3D perspective
-  bearing        Float?  // For rotating the map
+  pitch          Float? // For a 3D perspective
+  bearing        Float? // For rotating the map
 
-  storyId     String
-  story       Story   @relation(fields: [storyId], references: [id])
+  storyId String
+  story   Story  @relation(fields: [storyId], references: [id])
 }
 
 model DynamicPoint {
-  id          String @id @default(cuid())
+  id          Int         @id @default(autoincrement())
   latitude    Float
   longitude   Float
   name        String
@@ -62,20 +62,22 @@ model DynamicPoint {
   markerImage String? // example: a URL to a custom icon
   mediaItems  MediaItem[]
   storyStepId Int
-  storyStep   StoryStep @relation(fields: [storyStepId], references: [id])
+  storyStep   StoryStep   @relation(fields: [storyStepId], references: [id])
 }
 
 model MediaItem {
-  id          Int         @id @default(autoincrement())
-  order       Int         //Order of media display
-  type        MediaType
-  source      String      //Media URL
-  alt         String?
-  caption     String?
+  id      Int       @id @default(autoincrement())
+  order   Int //Order of media display
+  type    MediaType
+  source  String //Media URL
+  alt     String?
+  caption String?
 
   storyStepId Int?
   storyStep   StoryStep? @relation(fields: [storyStepId], references: [id])
 
-  dynamicPointId  Int?
-  dynamicPoint    DynamicPoint? @relation(fields: [dynamicPointId], references: [id])
+  dynamicPointId Int?
+  dynamicPoint   DynamicPoint? @relation(fields: [dynamicPointId], references: [id])
+  ImpactStat     ImpactStat?   @relation(fields: [impactStatId], references: [id])
+  impactStatId   Int?
 }

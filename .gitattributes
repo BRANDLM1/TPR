@@ -1,0 +1,32 @@
+#Default behavior
+* text=auto
+
+# Normalize to LF line endings
+*.js      text eol=lf
+*.jsx     text eol=lf
+*.ts      text eol=lf
+*.tsx     text eol=lf
+*.json    text eol=lf
+*.css     text eol=lf
+*.scss    text eol=lf
+*.html    text eol=lf
+*.md      text eol=lf
+*.graphql text eol=lf
+*.prisma  text eol=lf
+*.sql     text eol=lf
+*.env     text eol=lf
+*.sh      text eol=lf
+
+# Declare files with CRLF line endings only
+*.bat     text eol=crlf
+
+# Binary don't touch
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.gif     binary
+*.ico     binary
+*.svg     binary
+*.pdf     binary
+*.woff    binary
+*.woff2   binary

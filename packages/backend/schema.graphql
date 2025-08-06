@@ -39,7 +39,7 @@ type StoryStep {
   mediaItems: [MediaItem!]!
   layersToShow: [String!]! # An array of Mapbox layer IDs, ex: ["ghost-bison-range"]
   layersToHide: [String!]!
-  dynamicPoints: [GeoJsonPointFeature]
+  dynamicPoints: [GeoJsonPointFeature]!
   nextButtonText: String
   zoom: Float
   latitude: Float
@@ -58,6 +58,7 @@ type Point {
   coordinates: [Float!]! #[long, lat] array
 }
 type DynamicPointProperties {
+  id: ID!
   name: String!
   description: String!
   color: String
