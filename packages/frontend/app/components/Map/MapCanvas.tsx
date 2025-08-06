@@ -95,7 +95,7 @@ export default function MapContainer() {
       const description = feature.properties.description || null;
       const link = feature.properties.link || null;
       
-      // Ensure coordinates are not modified while being used
+
       while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
         coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
       }
@@ -106,8 +106,8 @@ export default function MapContainer() {
         .addTo(map);
     });
 
-    
-    // Change the cursor to a pointer when over the points
+
+    // Changing the cursor to a pointer when over the points
     map.on('mouseenter', 'dynamic-points-layer', () => {
       map.getCanvas().style.cursor = 'pointer';
     });

@@ -6,107 +6,58 @@ generator client {
 datasource db {
   provider          = "postgresql"
   url               = env("DATABASE_URL")
-  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
-// === CORE LOOKUP & PROJECT-RELATED TABLES ===
+model Story {
+  id         String     @id @default(cuid())
+  title      String 
+  steps      StoryStep[]
+  dynamicStats   ImpactStat[]
+}
 
-model HistoricalSites {
+model ImpactStat {
+  id         Int     @id @default(autoincrement())
+  title      String
+  statistic  Int
+  content    String?
+  mediaType   String?
+  mediaSrc    String?
+  link       String?
+  storyId    String
+  story      Story @relation(fields: [storyId], references: [id])
+}
+
+model StoryStep {
   id          Int     @id @default(autoincrement())
-  siteName    String? @map("site_name")
-  description String?
-  locationId  Int?    @map("location_id") // Note: No foreign key was in the SQL, so we leave it as a simple integer for now.
+  title       String
+  content     String
+  link        String?
+  mediaType   String?
+  mediaSrc    String?
+  layersToShow  String[]
+  layersToHide  String[]
+  dynamicPoints DynamicPoint[]?
+  nextButtonText  String?
+  zoom           Float?
+  latitude       Float?
+  longitude      Float?
+  pitch          Float?  // For a 3D perspective
+  bearing        Float?  // For rotating the map
+
+  storyId     String
+  story       Story   @relation(fields: [storyId], references: [id])
 }
 
-model Reservations {
-  id            Int        @id @default(autoincrement())
-  reservation   String     @unique
-  gisTerritory  Int?       @map("gis_territory")
-  // Relationship: A reservation can have many projects
-  projects      Projects[]
-}
-
-model Pillars {
-  id          Int        @id @default(autoincrement())
-  pillar      String     @unique
-  description String?
-  // Relationship: A pillar can have many projects
-  projects    Projects[]
-}
-
-model Vision2035 {
-  id          Int        @id @default(autoincrement())
-  vision      String     @unique
-  description String?
-  // Relationship: A vision can have many projects
-  projects    Projects[]
-}
-
-model Projects {
-  id            Int       @id @default(autoincrement())
-  projectName   String?   @map("project_name")
-  description   String?
-  startDate     DateTime? @map("start_date")
-  imageUrl      String?   // For Cloudinary
-  videoUrl      String?   // For Cloudinary  
-  // --- Foreign Keys and Relationships ---
-  reservationId Int         @map("reservation_id")
-  reservation   Reservations @relation(fields: [reservationId], references: [id])
-
-  pillarId      Int         @map("pillar_id")
-  pillar        Pillars     @relation(fields: [pillarId], references: [id])
-
-  vision2035Id  Int         @map("vision2035_id")
-  vision2035    Vision2035  @relation(fields: [vision2035Id], references: [id])
-}
-
-
-// === IMPACT REPORTING TABLES ===
-
-model ImpactCategories {
-  id          Int                      @id @default(autoincrement())
-  category    String                   @unique
-  // Relationships
-  validMetrics  ValidCategoryMetrics[]
-  impactData    ImpactData[]
-}
-
-model ImpactMetrics {
-  id          Int                      @id @default(autoincrement())
-  metric      String                   @unique
-  unit        String?
-  // Relationships
-  validForCategories ValidCategoryMetrics[]
-  impactData         ImpactData[]
-}
-
-model ValidCategoryMetrics {
-  categoryId  Int @map("category_id")
-  metricId    Int @map("metric_id")
-
-  // --- Relationships ---
-  category    ImpactCategories @relation(fields: [categoryId], references: [id])
-  metric      ImpactMetrics    @relation(fields: [metricId], references: [id])
-
-  // This is the primary key that ImpactData will point to.
-  @@id([categoryId, metricId])
-
-  // This is the "back-relation" from the main data table.
-  // It gives the relation a name: "ValidCombination"
-  impactData ImpactData[]     @relation("ValidCombination")
-}
-
-model ImpactData {
-  id          Int       @id @default(autoincrement())
-  value       Int?      // Changed to Int to match your SQL
-  // --- Foreign Keys and Relationships ---
-  categoryId  Int       @map("category_id")
-  metricId    Int       @map("metric_id")
-
-  // --- Relationships that create the simple foreign keys ---
-  category    ImpactCategories @relation(fields: [categoryId], references: [id])
-  metric      ImpactMetrics    @relation(fields: [metricId], references: [id])
-
-  // THIS IS THE CRITICAL COMPOSITE FOREIGN KEY CONSTRAINT
-  validCombination ValidCategoryMetrics @relation("ValidCombination", fields: [categoryId, metricId], references: [categoryId, metricId])
+model DynamicPoint {
+  id          String @id @default(cuid())
+  latitude    Float
+  longitude   Float
+  name        String
+  description String
+  color       String? // example: "#ff0000" for red
+  markerImage String? // example: a URL to a custom icon
+  mediaType   String?
+  mediaSrc    String?
+  storyStepId Int
+  storyStep   StoryStep @relation(fields: [storyStepId], references: [id])
 }

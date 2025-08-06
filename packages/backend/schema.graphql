@@ -3,28 +3,35 @@ type Story {
   id: ID!
   title: String!
   steps: [StoryStep!]!
-  stats: [ImpactStats!]!
+  dynamicStats: [ImpactStat!]!
 }
 
-type ImpactStats {
+type ImpactStat {
   id:ID!
   title: String!
   statistic: Int!
-  content: String!
-  link: String!
+  content: String
+  mediaType: String # 'image' or 'video'
+  mediaSrc: String
+  link: String
 }
 
 type StoryStep {
   id: ID!
   title: String!
   content: String!
-  link: String!
-  mediaType: String! # 'image' or 'video'
-  mediaSrc: String!
+  link: String
+  mediaType: String
+  mediaSrc: String
   layersToShow: [String!]! # An array of Mapbox layer IDs, ex: ["ghost-bison-range"]
   layersToHide: [String!]!
-  dynamicPoints: [GeoJsonPointFeature];
+  dynamicPoints: [GeoJsonPointFeature]
   nextButtonText: String
+  zoom: Float
+  latitude: Float
+  longitude: Float
+  pitch: Float
+  bearing: Float
 }
 
 type GeoJsonPointFeature {
@@ -39,6 +46,10 @@ type Point {
 type DynamicPointProperties {
   name: String!
   description: String!
+  color: String
+  markerImage: String
+  mediaType: String
+  mediaSrc: String
 }
 
 # Fetch story query

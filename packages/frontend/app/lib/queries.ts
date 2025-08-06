@@ -23,15 +23,27 @@ export const GET_STORY_BY_ID = gql`
           properties {
             name
             description
+            mediaType
+            mediaSrc
+            color
+            markerImage
+            link
           }
         }
         nextButtonText
+        zoom
+        latitude
+        longitude
+        pitch
+        bearing
       }
-      stats{
+      dynamicStats{
         id
         title
         statistic
         content
+        mediaType
+        mediaSrc
         link
       }
     }
