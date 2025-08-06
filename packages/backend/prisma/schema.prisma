@@ -8,6 +8,10 @@ datasource db {
   url               = env("DATABASE_URL")
 }
 
+enum MediaType{
+  IMAGE
+  VIDEO
+}
 model Story {
   id         String     @id @default(cuid())
   title      String 
@@ -17,11 +21,11 @@ model Story {
 
 model ImpactStat {
   id         Int     @id @default(autoincrement())
+  order:     Int!
   title      String
   statistic  Int
   content    String?
-  mediaType   String?
-  mediaSrc    String?
+  mediaItems MediaItem[]
   link       String?
   storyId    String
   story      Story @relation(fields: [storyId], references: [id])
@@ -29,11 +33,11 @@ model ImpactStat {
 
 model StoryStep {
   id          Int     @id @default(autoincrement())
+  order:      Int
   title       String
   content     String
   link        String?
-  mediaType   String?
-  mediaSrc    String?
+  mediaItems  MediaItem[]   
   layersToShow  String[]
   layersToHide  String[]
   dynamicPoints DynamicPoint[]?
@@ -56,8 +60,22 @@ model DynamicPoint {
   description String
   color       String? // example: "#ff0000" for red
   markerImage String? // example: a URL to a custom icon
-  mediaType   String?
-  mediaSrc    String?
+  mediaItems  MediaItem[]
   storyStepId Int
   storyStep   StoryStep @relation(fields: [storyStepId], references: [id])
+}
+
+model MediaItem {
+  id          Int         @id @default(autoincrement())
+  order       Int         //Order of media display
+  type        MediaType
+  source      String      //Media URL
+  alt         String?
+  caption     String?
+
+  storyStepId Int?
+  storyStep   StoryStep? @relation(fields: [storyStepId], references: [id])
+
+  dynamicPointId  Int?
+  dynamicPoint    DynamicPoint? @relation(fields: [dynamicPointId], references: [id])
 }

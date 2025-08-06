@@ -7,11 +7,18 @@ export const GET_STORY_BY_ID = gql`
       title
       steps {
         id
+        order
         title
         content
         link
-        mediaType
-        mediaSrc
+        mediaItems {
+          id
+          order
+          type
+          source
+          alt
+          caption
+        }
         layersToShow
         layersToHide
         dynamicPoints {
@@ -23,8 +30,7 @@ export const GET_STORY_BY_ID = gql`
           properties {
             name
             description
-            mediaType
-            mediaSrc
+            mediaItems
             color
             markerImage
             link
@@ -39,11 +45,11 @@ export const GET_STORY_BY_ID = gql`
       }
       dynamicStats{
         id
+        order
         title
         statistic
         content
-        mediaType
-        mediaSrc
+        mediaItems
         link
       }
     }

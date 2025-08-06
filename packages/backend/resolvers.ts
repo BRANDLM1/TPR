@@ -6,11 +6,20 @@ export const resolvers = {
         story: async (_parent, {id }: {id: string}, context: Context,) => {
             console.log(`Fetching story with ID: ${ id }`);
 
-            const dbStory = await
-            context.prisma.story.findUnique({
+            const dbStory = await context.prisma.story.findUnique({
                 where: { id: id },
                 include: {
-                    steps: true,
+                    steps: {
+                        orderBy: { order: 'asc' },
+                        include: {
+                            mediaItems: { orderBy: { order: 'asc' } },
+                                dynamicPoints: {
+                                    include: {
+                                        mediaItems: { orderBy: { order: 'asc' } }
+                                    }
+                            }
+                        } 
+                    }
                 }
             });
 
@@ -24,7 +33,13 @@ export const resolvers = {
 
             const dbStats = await
             context.prisma.impactStat.findMany({
-                where: { storyId: storyId }
+                where: { storyId: storyId },
+                orderBy: { order: 'asc' },
+                include: {
+                    mediaItems: {
+                        orderBy: { order: 'asc' }
+                    }
+                }
             });
 
             return dbStats;            
@@ -38,7 +53,12 @@ export const resolvers = {
             
             const dbPoints = await
             context.prisma.dynamicPoint.findMany({
-                where: { storyStepId: storyStepId }
+                where: { storyStepId: storyStepId },
+                include:{
+                    mediaItems: {
+                    orderBy: { order: 'asc' }
+                    }
+                }
             });
 
             const geoJsonFeatures = dbPoints.map(point => ({
@@ -52,8 +72,7 @@ export const resolvers = {
                     description: point.description,
                     color: point.color,
                     markerImage: point.markerImage,
-                    mediaType: point.mediaType,
-                    mediaSrc: point.mediaSrc,
+                    mediaItem: point.mediaItems,
                 },
             }));
             return geoJsonFeatures;

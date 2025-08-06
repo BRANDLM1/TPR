@@ -1,3 +1,17 @@
+enum MediaType{
+  IMAGE
+  VIDEO
+}
+
+model MediaItem {
+  id: ID!
+  order: Int!
+  type: MediaType!
+  source: String! //Media URL
+  alt: String
+  caption: String
+}
+
 # Central Query Object
 type Story {
   id: ID!
@@ -8,21 +22,21 @@ type Story {
 
 type ImpactStat {
   id:ID!
+  order: Int!
   title: String!
   statistic: Int!
   content: String
-  mediaType: String # 'image' or 'video'
-  mediaSrc: String
+  mediaItems: [MediaItem!]!
   link: String
 }
 
 type StoryStep {
   id: ID!
+  order: Int!
   title: String!
   content: String!
   link: String
-  mediaType: String
-  mediaSrc: String
+  mediaItems: [MediaItem!]!
   layersToShow: [String!]! # An array of Mapbox layer IDs, ex: ["ghost-bison-range"]
   layersToHide: [String!]!
   dynamicPoints: [GeoJsonPointFeature]
@@ -48,11 +62,11 @@ type DynamicPointProperties {
   description: String!
   color: String
   markerImage: String
-  mediaType: String
-  mediaSrc: String
+  mediaItems: [MediaItem!]!
 }
 
 # Fetch story query
 type Query {
   story(id: String!): Story
+  orderBy: { order: 'asc' }
  }
