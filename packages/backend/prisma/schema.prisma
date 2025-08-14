@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url = env("DATABASE_URL")
+  url      = env("DATABASE_URL")
 }
 
 enum MediaType {
@@ -32,37 +32,57 @@ model ImpactStat {
 }
 
 model StoryStep {
-  id             Int            @id @default(autoincrement())
-  order          Int
-  title          String
-  content        String
-  link           String?
-  mediaItems     MediaItem[]
-  layersToShow   String[]
-  layersToHide   String[]
-  dynamicPoints  DynamicPoint[]
-  nextButtonText String?
-  zoom           Float?
-  latitude       Float?
-  longitude      Float?
-  pitch          Float? // For a 3D perspective
-  bearing        Float? // For rotating the map
+  id              Int              @id @default(autoincrement())
+  order           Int
+  title           String
+  content         String
+  link            String?
+  mediaItems      MediaItem[]
+  layersToShow    String[]
+  layersToHide    String[]
+  dynamicPoints   DynamicPoint[]
+  dynamicPolygons DynamicPolygon[]
+  nextButtonText  String?
+  zoom            Float?
+  latitude        Float?
+  longitude       Float?
+  pitch           Float? // For a 3D perspective
+  bearing         Float? // For rotating the map
 
   storyId String
   story   Story  @relation(fields: [storyId], references: [id])
 }
 
 model DynamicPoint {
-  id          Int         @id @default(autoincrement())
+  id                    String          @id @default(cuid())
+  latitude              Float
+  longitude             Float
+  name                  String
+  description           String
+  centerPointForPolygon DynamicPolygon? @relation("DynamicPointRelation")
+  color                 String? // example: "#ff0000" for red
+  markerImage           String? // example: a URL to a custom icon
+  mediaItems            MediaItem[]
+  storyStepId           Int
+  storyStep             StoryStep       @relation(fields: [storyStepId], references: [id])
+}
+
+model DynamicPolygon {
+  id          String @id @default(cuid())
   latitude    Float
   longitude   Float
   name        String
-  description String
-  color       String? // example: "#ff0000" for red
-  markerImage String? // example: a URL to a custom icon
-  mediaItems  MediaItem[]
+  fillColor   String // example: '#0080ff' for blue
+  fillOpacity Float // Anything between 0-1
+  lineColor   String
+  lineWidth   String
+
+  centerPointId String?       @unique
+  centerPoint   DynamicPoint? @relation("DynamicPointRelation", references: [id], fields: [centerPointId])
+
   storyStepId Int
   storyStep   StoryStep   @relation(fields: [storyStepId], references: [id])
+  MediaItem   MediaItem[]
 }
 
 model MediaItem {
@@ -76,8 +96,12 @@ model MediaItem {
   storyStepId Int?
   storyStep   StoryStep? @relation(fields: [storyStepId], references: [id])
 
-  dynamicPointId Int?
+  dynamicPolygonId String?
+  dynamicPolygon   DynamicPolygon? @relation(fields: [dynamicPolygonId], references: [id])
+
+  dynamicPointId String?
   dynamicPoint   DynamicPoint? @relation(fields: [dynamicPointId], references: [id])
-  ImpactStat     ImpactStat?   @relation(fields: [impactStatId], references: [id])
-  impactStatId   Int?
+
+  ImpactStat   ImpactStat? @relation(fields: [impactStatId], references: [id])
+  impactStatId Int?
 }

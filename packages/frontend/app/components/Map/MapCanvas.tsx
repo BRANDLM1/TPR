@@ -16,6 +16,17 @@ interface VisionState {
   currentStep: number;
   showModal: boolean;
 }
+interface StepConfig {
+  layersToShow: string[];
+  layersToHide: string[];
+  dynamicPoints?: any[];
+  dynamicPolygons?: any[];
+  zoom?: number;
+  pitch?: number;
+  bearing?: number;
+  latitude?: number;
+  longitude?: number;
+}
 
 export default function MapContainer() {
   const mapRef = useRef<mapboxgl.Map | null>(null);
@@ -71,9 +82,29 @@ export default function MapContainer() {
           }
       })
 
+      map.addSource('dynamic-polygons-source',{
+        type:'geojson',
+        data: {
+          type :'FeatureCollection',
+          features: []
+        },
+      });
+      map.addLayer({
+        id: 'dynamic-polygons-layer',
+        source: 'dynamic-polygons-source',
+        type: 'fill',
+        paint: { 
+          'fill-color': '#088',
+          'fill-opacity': 0.5,
+          'fill-outline-color': '#000000', }
+      });
+
       map.addSource('dynamic-points-source',{
         type:'geojson',
-        data: {type :'FeatureCollection', features: []},
+        data: {
+          type :'FeatureCollection',
+          features: []
+        },
       });
       map.addLayer({
         id: 'dynamic-points-layer',
@@ -181,7 +212,7 @@ export default function MapContainer() {
   }, [VisionState, storyData]);
 
   // Apply layer visibility changes
-  const applyLayerChanges = (stepConfig: { layersToShow: string[]; layersToHide: string[] }) => {
+  const applyLayerChanges = (stepConfig: StepConfig) => {
       
     const map = mapRef.current;
     if (!map || !map.isStyleLoaded()) return;
@@ -200,7 +231,36 @@ export default function MapContainer() {
       }
     });
 
+    const pointsSource = map.getSource('dynamic-points-source') as mapboxgl.GeoJSONSource;
+    if (pointsSource) {
+      const pointsData = {
+        type: 'FeatureCollection' as const,
+        features: stepConfig.dynamicPoints || [], // Use the data or an empty array
+      };
+      pointsSource.setData(pointsData);
+    }
+
+    const polygonsSource = map.getSource('dynamic-polygons-source') as mapboxgl.GeoJSONSource;
+    if (polygonsSource) {
+      const polygonsData = {
+        type: 'FeatureCollection' as const,
+        features: stepConfig.dynamicPolygons || [], // Use the data or an empty array
+      };
+      polygonsSource.setData(polygonsData);
+    }
+
+    if (stepConfig.latitude && stepConfig.longitude) {
+      map.flyTo({
+        center: [stepConfig.longitude, stepConfig.latitude],
+        zoom: stepConfig.zoom,
+        pitch: stepConfig.pitch,
+        bearing: stepConfig.bearing,
+        essential: true, // Prioritize recentering
+      });
+    }
   };
+
+  
 
   // Hide all layers (reset state)
   const hideAllLayers = () => {

@@ -28,12 +28,41 @@ export const GET_STORY_BY_ID = gql`
             coordinates
           }
           properties {
+            id
             name
             description
             mediaItems
             color
             markerImage
             link
+          }
+        }
+        dynamicPolygons {
+          type
+          geometry {
+            type
+            coordinates
+          }
+          properties {
+            id
+            name
+            fillColor
+            fillOpacity
+            lineColor
+            lineWidth
+            centerPoint {
+              type
+              geometry {
+                type
+                coordinates
+              }
+              properties {
+                name
+                description
+                color
+                markerImage
+              }
+            }
           }
         }
         nextButtonText

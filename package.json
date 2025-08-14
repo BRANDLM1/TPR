@@ -12,9 +12,14 @@
     "dev:backend": "npm run dev --workspace=backend",
     "build:frontend": "npm run build --workspace=frontend",
     "build:backend": "npm run build --workspace=backend",
-    "install:all": "npm install --workspace=frontend && npm install --workspace=backend"
+    "install:all": "npm install --workspace=frontend && npm install --workspace=backend",
+    "db:migrate": "dotenv -- npx prisma migrate dev --schema=./packages/backend/prisma/schema.prisma",
+    "db:generate": "dotenv -- npx prisma generate --schema=./packages/backend/prisma/schema.prisma",
+    "db:studio": "dotenv -- npx prisma studio --schema=./packages/backend/prisma/schema.prisma",
+    "db:pull": "dotenv -- npx prisma db pull --schema=./packages/backend/prisma/schema.prisma"
   },
   "devDependencies": {
+    "dotenv-cli": "^10.0.0",
     "eslint": "^8.0.0",
     "postcss": "^8.5.6",
     "postcss-preset-mantine": "^1.18.0",

@@ -1,81 +1,90 @@
 import { Context } from "./src/services/context";
 
+
+function transformPointToGeoJson(dbPoint) {
+  if (!dbPoint) return null;
+  
+  return {
+    type: 'Feature',
+    geometry: {
+      type: 'Point',
+      coordinates: [dbPoint.longitude, dbPoint.latitude],
+    },
+    properties: {
+      id: dbPoint.id,
+      name: dbPoint.name,
+      description: dbPoint.description,
+      color: dbPoint.color,
+      markerImage: dbPoint.markerImage,
+      mediaItems: dbPoint.mediaItems,
+    },
+  };
+}
+
 export const resolvers = {
 
     Query: {
-        story: async (_parent, {id }: {id: string}, context: Context,) => {
-            console.log(`Fetching story with ID: ${ id }`);
+        story: async (_parent, { id }: { id: string }, context: Context) => {
+            console.log(`Fetching story with ID: ${id}`);
 
             const dbStory = await context.prisma.story.findUnique({
                 where: { id: id },
                 include: {
+                    impactStats: {
+                        orderBy: { order: 'asc' },
+                        include: {
+                            mediaItems: { orderBy: { order: 'asc' } },
+                        },
+                    },
                     steps: {
                         orderBy: { order: 'asc' },
                         include: {
                             mediaItems: { orderBy: { order: 'asc' } },
-                                dynamicPoints: {
-                                    include: {
-                                        mediaItems: { orderBy: { order: 'asc' } }
+                            dynamicPoints: {
+                                include: {
+                                    mediaItems: { orderBy: { order: 'asc' } },
+                                },
+                            },
+                            dynamicPolygons: {
+                                include: {
+                                    centerPoint: {
+                                        include: {
+                                            mediaItems: { orderBy: { order: 'asc' } }
+                                        }
                                     }
+                                }
                             }
-                        } 
-                    }
-                }
+                        },
+                    },
+                },
             });
-
             return dbStory;
         },
     },
-    Story: {
-        dynamicStats: async(parent, _args, context: Context) => {
-            const storyId = parent.id
-            console.log(`Fetching impact statistics for Story ID: ${storyId}`)
-
-            const dbStats = await
-            context.prisma.impactStat.findMany({
-                where: { storyId: storyId },
-                orderBy: { order: 'asc' },
-                include: {
-                    mediaItems: {
-                        orderBy: { order: 'asc' }
-                    }
-                }
-            });
-
-            return dbStats;            
-        },
-    },
-
     StoryStep: {
-        dynamicPoints: async(parent, _args, context: Context, _info) => {
-            const storyStepId = parent.id;
-            console.log(`Fetching dynamic points for StoryStep ID: ${storyStepId}`)
+        // Parent is Storystep obj with dynamicPoints array
+        //Transform into geojson as workaround to Prismas geospatial query limitations
+        dynamicPoints: (parent) => {
+            if (!parent.dynamicPoints) return [];
             
-            const dbPoints = await
-            context.prisma.dynamicPoint.findMany({
-                where: { storyStepId: storyStepId },
-                include:{
-                    mediaItems: {
-                    orderBy: { order: 'asc' }
-                    }
-                }
-            });
+            return parent.dynamicPoints.map(transformPointToGeoJson);
+        },
 
-            const geoJsonFeatures = dbPoints.map(point => ({
+        dynamicPolygons: (parent) => {
+            if(!parent.dynamicPolygons) return [];
+            
+            return parent.dynamicPolygons.map(dbPolygon => ({
                 type: 'Feature',
-                geometry: {
-                    type: 'Point',
-                    coordinates: [point.longitude, point.latitude],
-                },
+                geometry: dbPolygon.geometry as any,
                 properties: {
-                    name: point.name,
-                    description: point.description,
-                    color: point.color,
-                    markerImage: point.markerImage,
-                    mediaItem: point.mediaItems,
+                    name: dbPolygon.name,
+                    fillColor: dbPolygon.fillColor,
+                    fillOpacity: dbPolygon.fillOpacity,
+                    lineColor: dbPolygon.lineColor,
+                    lineWidth: dbPolygon.lineWidth,
+                    centerPoint: transformPointToGeoJson(dbPolygon.centerPoint),
                 },
             }));
-            return geoJsonFeatures;
-        }
+        },
     },
-}
+};

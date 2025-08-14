@@ -40,12 +40,34 @@ type StoryStep {
   layersToShow: [String!]! # An array of Mapbox layer IDs, ex: ["ghost-bison-range"]
   layersToHide: [String!]!
   dynamicPoints: [GeoJsonPointFeature]!
+  dynamicPolygons: [GeoJsonPolygonFeature]!
   nextButtonText: String
   zoom: Float
   latitude: Float
   longitude: Float
   pitch: Float
   bearing: Float
+}
+
+type GeoJsonPolygonFeature {
+  type: String!
+  geometry: PolygonGeometry!
+  properties: DynamicPolygonProperties!
+}
+type PolygonGeometry {
+  type: String! # Always "Polygon"
+  # Polygon coordinate sets require nesting
+  coordinates: [[[Float!]!]!]!
+}
+type DynamicPolygonProperties {
+  id: ID!
+  name: String!
+  fillColor: String
+  fillOpacity: Float
+  lineColor: String
+  lineWidth: Float
+  # Dynamic point assigned to polygon
+  centerPoint: GeoJsonPointFeature
 }
 
 type GeoJsonPointFeature {
