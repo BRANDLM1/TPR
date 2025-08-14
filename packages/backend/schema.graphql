@@ -2,6 +2,13 @@ enum MediaType{
   IMAGE
   VIDEO
 }
+enum ModalPosition {
+  CENTER
+  TOP_LEFT
+  TOP_RIGHT
+  BOTTOM_LEFT
+  BOTTOM_RIGHT
+}
 
 model MediaItem {
   id: ID!
@@ -42,6 +49,7 @@ type StoryStep {
   dynamicPoints: [GeoJsonPointFeature]!
   dynamicPolygons: [GeoJsonPolygonFeature]!
   nextButtonText: String
+  modalPosition: ModalPosition
   zoom: Float
   latitude: Float
   longitude: Float

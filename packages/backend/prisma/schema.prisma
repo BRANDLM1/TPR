@@ -11,6 +11,13 @@ enum MediaType {
   IMAGE
   VIDEO
 }
+enum ModalPosition {
+  CENTER
+  TOP_LEFT
+  TOP_RIGHT
+  BOTTOM_LEFT
+  BOTTOM_RIGHT
+}
 
 model Story {
   id           String       @id @default(cuid())
@@ -43,6 +50,7 @@ model StoryStep {
   dynamicPoints   DynamicPoint[]
   dynamicPolygons DynamicPolygon[]
   nextButtonText  String?
+  modalPosition   ModalPosition? @default(CENTER)
   zoom            Float?
   latitude        Float?
   longitude       Float?

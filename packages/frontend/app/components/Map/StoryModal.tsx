@@ -20,7 +20,7 @@ interface StoryModalProps {
   onBack: () => void;
   onClose: () => void;
 
-  position?: 'center' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+  position?: 'CENTER' | 'TOP_LEFT' | 'TOP_RIGHT' | 'BOTTOM_LEFT' | 'BOTTOM_RIGHT';
 
 }
 
@@ -30,13 +30,13 @@ export default function StoryModal({
   onNext, 
   onBack, 
   onClose,
-  position = 'center'
+  position = 'CENTER'
 }: StoryModalProps) {
   if (!content) return null;
 
   const getPositionStyles = () => {
     switch (position) {
-      case 'top-left':
+      case 'TOP_LEFT':
         return {
           position: 'fixed' as const,
           top: '20px',
@@ -44,7 +44,7 @@ export default function StoryModal({
           transform: 'none',
           margin: 0
         };
-      case 'top-right':
+      case 'TOP_RIGHT':
         return {
           position: 'fixed' as const,
           top: '20px',
@@ -52,7 +52,7 @@ export default function StoryModal({
           transform: 'none',
           margin: 0
         };
-      case 'bottom-left':
+      case 'BOTTOM_LEFT':
         return {
           position: 'fixed' as const,
           bottom: '20px',
@@ -60,7 +60,7 @@ export default function StoryModal({
           transform: 'none',
           margin: 0
         };
-      case 'bottom-right':
+      case 'BOTTOM_RIGHT':
         return {
           position: 'fixed' as const,
           bottom: '20px',
@@ -68,7 +68,7 @@ export default function StoryModal({
           transform: 'none',
           margin: 0
         };
-      case 'center':
+      case 'CENTER':
       default:
         return {};
     }
@@ -87,7 +87,7 @@ export default function StoryModal({
           fontWeight: 'bold',
           fontFamily: 'var(--font-fell)' 
         },
-        content: position !== 'center' ? getPositionStyles() : {}
+        content: position !== 'CENTER' ? getPositionStyles() : {}
       }}
     >
       <div className="story-modal-content">

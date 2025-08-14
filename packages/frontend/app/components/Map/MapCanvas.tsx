@@ -321,6 +321,7 @@ export default function MapContainer() {
         src: currentStepConfig.mediaSrc,
       },
       nextButtonText: currentStepConfig.nextButtonText || 'Continue',
+      position: currentStepConfig.modalPosition || 'CENTER',
       canGoBack: VisionState.currentStep > 0,
       isLastStep: VisionState.currentStep === storyData.story.steps.length - 1
     };

@@ -66,6 +66,7 @@ export const GET_STORY_BY_ID = gql`
           }
         }
         nextButtonText
+        modalPosition
         zoom
         latitude
         longitude
