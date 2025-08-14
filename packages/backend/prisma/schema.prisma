@@ -16,7 +16,7 @@ model Story {
   id           String       @id @default(cuid())
   title        String
   steps        StoryStep[]
-  dynamicStats ImpactStat[]
+  impactStats ImpactStat[]
 }
 
 model ImpactStat {
@@ -54,7 +54,7 @@ model StoryStep {
 }
 
 model DynamicPoint {
-  id                    String          @id @default(cuid())
+  id                    Int          @id @default(autoincrement())
   latitude              Float
   longitude             Float
   name                  String
@@ -68,21 +68,20 @@ model DynamicPoint {
 }
 
 model DynamicPolygon {
-  id          String @id @default(cuid())
-  latitude    Float
-  longitude   Float
+  id          Int       @id @default(autoincrement())
   name        String
+  geometry    Json
   fillColor   String // example: '#0080ff' for blue
   fillOpacity Float // Anything between 0-1
   lineColor   String
   lineWidth   String
+  mediaItems   MediaItem[]
 
-  centerPointId String?       @unique
+  centerPointId Int?       @unique
   centerPoint   DynamicPoint? @relation("DynamicPointRelation", references: [id], fields: [centerPointId])
 
   storyStepId Int
   storyStep   StoryStep   @relation(fields: [storyStepId], references: [id])
-  MediaItem   MediaItem[]
 }
 
 model MediaItem {
@@ -96,12 +95,12 @@ model MediaItem {
   storyStepId Int?
   storyStep   StoryStep? @relation(fields: [storyStepId], references: [id])
 
-  dynamicPolygonId String?
+  dynamicPolygonId Int?
   dynamicPolygon   DynamicPolygon? @relation(fields: [dynamicPolygonId], references: [id])
 
-  dynamicPointId String?
+  dynamicPointId Int?
   dynamicPoint   DynamicPoint? @relation(fields: [dynamicPointId], references: [id])
 
-  ImpactStat   ImpactStat? @relation(fields: [impactStatId], references: [id])
+  impactStat   ImpactStat? @relation(fields: [impactStatId], references: [id])
   impactStatId Int?
 }
