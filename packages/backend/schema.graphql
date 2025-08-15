@@ -10,11 +10,11 @@ enum ModalPosition {
   BOTTOM_RIGHT
 }
 
-model MediaItem {
+type MediaItem {
   id: ID!
   order: Int!
   type: MediaType!
-  source: String! //Media URL
+  source: String! # Media URL
   alt: String
   caption: String
 }
@@ -24,7 +24,7 @@ type Story {
   id: ID!
   title: String!
   steps: [StoryStep!]!
-  dynamicStats: [ImpactStat!]!
+  impactStats: [ImpactStat!]
 }
 
 type ImpactStat {
@@ -33,7 +33,7 @@ type ImpactStat {
   title: String!
   statistic: Int!
   content: String
-  mediaItems: [MediaItem!]!
+  mediaItems: [MediaItem!]
   link: String
 }
 
@@ -43,11 +43,11 @@ type StoryStep {
   title: String!
   content: String!
   link: String
-  mediaItems: [MediaItem!]!
-  layersToShow: [String!]! # An array of Mapbox layer IDs, ex: ["ghost-bison-range"]
-  layersToHide: [String!]!
-  dynamicPoints: [GeoJsonPointFeature]!
-  dynamicPolygons: [GeoJsonPolygonFeature]!
+  mediaItems: [MediaItem!]
+  layersToShow: [String!] # An array of Mapbox layer IDs, ex: ["ghost-bison-range"]
+  layersToHide: [String!]
+  dynamicPoints: [GeoJsonPointFeature!]
+  dynamicPolygons: [GeoJsonPolygonFeature!]
   nextButtonText: String
   modalPosition: ModalPosition
   zoom: Float
@@ -57,16 +57,38 @@ type StoryStep {
   bearing: Float
 }
 
+type PointGeometry {
+  type: String!
+  coordinates: [Float!]!
+}
+
+type GeoJsonPointFeature {
+  type: String!
+  geometry: PointGeometry!
+  properties: DynamicPointProperties!
+}
+
+type DynamicPointProperties {
+  id: ID!
+  name: String!
+  description: String!
+  color: String
+  markerImage: String
+  mediaItems: [MediaItem!]
+  link: String
+}
+
+type PolygonGeometry {
+  type: String!
+  coordinates: [[[Float!]!]!]!
+}
+
 type GeoJsonPolygonFeature {
   type: String!
   geometry: PolygonGeometry!
   properties: DynamicPolygonProperties!
 }
-type PolygonGeometry {
-  type: String! # Always "Polygon"
-  # Polygon coordinate sets require nesting
-  coordinates: [[[Float!]!]!]!
-}
+
 type DynamicPolygonProperties {
   id: ID!
   name: String!
@@ -78,26 +100,7 @@ type DynamicPolygonProperties {
   centerPoint: GeoJsonPointFeature
 }
 
-type GeoJsonPointFeature {
-  type: String!
-  geometry: Point!
-  properties: DynamicPointProperties!
-}
-type Point {
-  type: String! #Always 'Point'
-  coordinates: [Float!]! #[long, lat] array
-}
-type DynamicPointProperties {
-  id: ID!
-  name: String!
-  description: String!
-  color: String
-  markerImage: String
-  mediaItems: [MediaItem!]!
-}
-
 # Fetch story query
 type Query {
   story(id: String!): Story
-  orderBy: { order: 'asc' }
  }

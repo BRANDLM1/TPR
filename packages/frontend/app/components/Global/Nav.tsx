@@ -9,11 +9,11 @@ export default function Nav({ children }: { children?: React.ReactNode }) {
     if (!shopwMap) {
       return(        
         <nav className="fixed border-3 border-black top-0 left-0 z-50 w-full bg-white-100 backdrop-blur shadow-md">
-          <div className = "flex items-center justify-between px-12 py-4">
+          <div className = "flex items-center justify-between px-12 py-3">
             <div className="flex items-center space-x-6">
-                <img src={'./media/pictures/logo.png'} width="135" height="135"/>
+                <img src={'./media/pictures/logo.png'} width="75" height="75"/>
             
-            <h1 className="relative text-7xl font-fell ml-8 text-black">The Tipi Raisers</h1>
+            <h1 className="text-5xl font-fell text-black">The Tipi Raisers</h1>
             {/* <div className= ' top-30 left-60 text-xl'> */}
             {children}
             {/* </div> */}
@@ -24,7 +24,7 @@ export default function Nav({ children }: { children?: React.ReactNode }) {
               href="https://www.thetipiraisers.org/donate.html"
               target="_blank"
               rel="noopener noreferrer"
-              className="bg-amber-300 text-black font-bold py-6 px-10 rounded-xl text-4xl float-end shadow-md hover:bg-amber-200"
+              className="bg-amber-300 text-black font-bold py-3 px-5 rounded-xl text-2xl float-end shadow-md hover:bg-amber-200"
               style={{ cursor: 'pointer' }}
             >
               Donate Today!
@@ -33,7 +33,7 @@ export default function Nav({ children }: { children?: React.ReactNode }) {
               href="https://www.thetipiraisers.org/contact-us.html"
               target="_blank"
               rel="noopener noreferrer"
-              className="bg-amber-300 text-black font-bold py-6 px-10 rounded-xl text-4xl float-end shadow-md hover:bg-amber-200"
+              className="bg-amber-300 text-black font-bold py-3 px-5 rounded-xl text-2xl float-end shadow-md hover:bg-amber-200"
               style={{ cursor: 'pointer' }}
             >
               Contact Us

@@ -1,7 +1,8 @@
-import { Context } from "./src/services/context";
+import { Context } from "./services/context";
+import { DynamicPoint, DynamicPolygon, StoryStep } from '@prisma/client';
 
-
-function transformPointToGeoJson(dbPoint) {
+function transformPointToGeoJson( dbPoint: (DynamicPoint & { mediaItems?: any[] }) | null
+) {
   if (!dbPoint) return null;
   
   return {
@@ -24,7 +25,7 @@ function transformPointToGeoJson(dbPoint) {
 export const resolvers = {
 
     Query: {
-        story: async (_parent, { id }: { id: string }, context: Context) => {
+        story: async (_parent: any, { id }: { id: string }, context: Context) => {
             console.log(`Fetching story with ID: ${id}`);
 
             const dbStory = await context.prisma.story.findUnique({
@@ -49,11 +50,11 @@ export const resolvers = {
                                 include: {
                                     centerPoint: {
                                         include: {
-                                            mediaItems: { orderBy: { order: 'asc' } }
-                                        }
-                                    }
-                                }
-                            }
+                                            mediaItems: { orderBy: { order: 'asc' } },
+                                        },
+                                    },
+                                },
+                            },
                         },
                     },
                 },
@@ -64,13 +65,13 @@ export const resolvers = {
     StoryStep: {
         // Parent is Storystep obj with dynamicPoints array
         //Transform into geojson as workaround to Prismas geospatial query limitations
-        dynamicPoints: (parent) => {
+        dynamicPoints: (parent: StoryStep & { dynamicPoints: any[] }) => {
             if (!parent.dynamicPoints) return [];
             
             return parent.dynamicPoints.map(transformPointToGeoJson);
         },
 
-        dynamicPolygons: (parent) => {
+        dynamicPolygons: (parent: StoryStep & { dynamicPolygons: (DynamicPolygon & { centerPoint?: any })[] }) => {
             if(!parent.dynamicPolygons) return [];
             
             return parent.dynamicPolygons.map(dbPolygon => ({

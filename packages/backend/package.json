@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "dotenv -e ../../.env.local -- ts-node-dev --respawn --transpile-only src/services/apollo.ts"
   },
   "keywords": [],
   "author": "",
@@ -18,7 +19,9 @@
   },
   "devDependencies": {
     "@types/node": "^24.0.3",
+    "dotenv-cli": "^10.0.0",
     "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
     "typescript": "^5.8.3"
   }
 }

@@ -31,7 +31,14 @@ export const GET_STORY_BY_ID = gql`
             id
             name
             description
-            mediaItems
+            mediaItems {
+              id
+              order
+              type
+              source
+              alt
+              caption
+            }
             color
             markerImage
             link
@@ -57,10 +64,19 @@ export const GET_STORY_BY_ID = gql`
                 coordinates
               }
               properties {
+                id
                 name
                 description
                 color
                 markerImage
+                mediaItems{
+                  id
+                  order
+                  type
+                  source
+                  alt
+                  caption
+                }
               }
             }
           }
@@ -73,13 +89,20 @@ export const GET_STORY_BY_ID = gql`
         pitch
         bearing
       }
-      dynamicStats{
+      impactStats {
         id
         order
         title
         statistic
         content
-        mediaItems
+        mediaItems {
+          id
+          order
+          type
+          source
+          alt
+          caption
+        }
         link
       }
     }

@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    // --- Target and Module Settings (This fixes your error) ---
+    "target": "ES2022",                // Compile to modern JavaScript
+    "module": "NodeNext",             // Use the modern Node.js module system
+    "moduleResolution": "NodeNext",   // THIS IS THE CRITICAL FIX
+
+    // --- Type Safety and Strictness (Best Practices) ---
+    "strict": true,                   // Enable all strict type-checking options
+    "esModuleInterop": true,          // Allows better compatibility between different module types
+    "skipLibCheck": true,             // Skip type checking of declaration files (speeds up compilation)
+    "forceConsistentCasingInFileNames": true, // Prevents case-sensitive path issues
+
+    // --- Output and Project Structure ---
+    "outDir": "./dist",               // Where to put the compiled JavaScript files for production builds
+    "rootDir": "./src",               // The root directory of your source files
+    "sourceMap": true,                // Generate source maps for easier debugging
+    "baseUrl": "."                    // Base directory for module resolution
+  },
+  "include": [
+    "src/**/*"                        // Tells TypeScript to only compile files inside the `src` directory
+  ],
+  "exclude": [
+    "node_modules"                    // Don't try to compile your dependencies
+  ]
+}

@@ -7,23 +7,11 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum MediaType {
-  IMAGE
-  VIDEO
-}
-enum ModalPosition {
-  CENTER
-  TOP_LEFT
-  TOP_RIGHT
-  BOTTOM_LEFT
-  BOTTOM_RIGHT
-}
-
 model Story {
-  id           String       @id @default(cuid())
-  title        String
-  steps        StoryStep[]
+  id          String       @id @default(cuid())
+  title       String
   impactStats ImpactStat[]
+  steps       StoryStep[]
 }
 
 model ImpactStat {
@@ -32,10 +20,10 @@ model ImpactStat {
   title      String
   statistic  Int
   content    String?
-  mediaItems MediaItem[]
   link       String?
   storyId    String
   story      Story       @relation(fields: [storyId], references: [id])
+  mediaItems MediaItem[]
 }
 
 model StoryStep {
@@ -44,71 +32,78 @@ model StoryStep {
   title           String
   content         String
   link            String?
-  mediaItems      MediaItem[]
   layersToShow    String[]
   layersToHide    String[]
-  dynamicPoints   DynamicPoint[]
-  dynamicPolygons DynamicPolygon[]
   nextButtonText  String?
-  modalPosition   ModalPosition? @default(CENTER)
   zoom            Float?
   latitude        Float?
   longitude       Float?
-  pitch           Float? // For a 3D perspective
-  bearing         Float? // For rotating the map
-
-  storyId String
-  story   Story  @relation(fields: [storyId], references: [id])
+  pitch           Float?
+  bearing         Float?
+  storyId         String
+  modalPosition   ModalPosition?   @default(CENTER)
+  dynamicPoints   DynamicPoint[]
+  dynamicPolygons DynamicPolygon[]
+  mediaItems      MediaItem[]
+  story           Story            @relation(fields: [storyId], references: [id])
 }
 
 model DynamicPoint {
-  id                    Int          @id @default(autoincrement())
   latitude              Float
   longitude             Float
   name                  String
   description           String
-  centerPointForPolygon DynamicPolygon? @relation("DynamicPointRelation")
-  color                 String? // example: "#ff0000" for red
-  markerImage           String? // example: a URL to a custom icon
-  mediaItems            MediaItem[]
+  link                  String?
+  color                 String?
+  markerImage           String?
   storyStepId           Int
+  id                    Int             @id @default(autoincrement())
   storyStep             StoryStep       @relation(fields: [storyStepId], references: [id])
+  centerPointForPolygon DynamicPolygon? @relation("DynamicPointRelation")
+  mediaItems            MediaItem[]
 }
 
 model DynamicPolygon {
-  id          Int       @id @default(autoincrement())
-  name        String
-  geometry    Json
-  fillColor   String // example: '#0080ff' for blue
-  fillOpacity Float // Anything between 0-1
-  lineColor   String
-  lineWidth   String
-  mediaItems   MediaItem[]
-
-  centerPointId Int?       @unique
-  centerPoint   DynamicPoint? @relation("DynamicPointRelation", references: [id], fields: [centerPointId])
-
-  storyStepId Int
-  storyStep   StoryStep   @relation(fields: [storyStepId], references: [id])
+  name          String
+  fillColor     String
+  fillOpacity   Float
+  lineColor     String
+  lineWidth     String
+  storyStepId   Int
+  geometry      Json
+  id            Int           @id @default(autoincrement())
+  centerPointId Int?          @unique
+  centerPoint   DynamicPoint? @relation("DynamicPointRelation", fields: [centerPointId], references: [id])
+  storyStep     StoryStep     @relation(fields: [storyStepId], references: [id])
+  mediaItems    MediaItem[]
 }
 
 model MediaItem {
-  id      Int       @id @default(autoincrement())
-  order   Int //Order of media display
-  type    MediaType
-  source  String //Media URL
-  alt     String?
-  caption String?
-
-  storyStepId Int?
-  storyStep   StoryStep? @relation(fields: [storyStepId], references: [id])
-
+  id               Int             @id @default(autoincrement())
+  order            Int
+  type             MediaType
+  source           String
+  alt              String?
+  caption          String?
+  storyStepId      Int?
+  impactStatId     Int?
+  dynamicPointId   Int?
   dynamicPolygonId Int?
+  dynamicPoint     DynamicPoint?   @relation(fields: [dynamicPointId], references: [id])
   dynamicPolygon   DynamicPolygon? @relation(fields: [dynamicPolygonId], references: [id])
+  impactStat       ImpactStat?     @relation(fields: [impactStatId], references: [id])
+  storyStep        StoryStep?      @relation(fields: [storyStepId], references: [id])
+}
 
-  dynamicPointId Int?
-  dynamicPoint   DynamicPoint? @relation(fields: [dynamicPointId], references: [id])
+enum MediaType {
+  IMAGE
+  VIDEO
+}
 
-  impactStat   ImpactStat? @relation(fields: [impactStatId], references: [id])
-  impactStatId Int?
+enum ModalPosition {
+  CENTER
+  TOP_LEFT
+  TOP_RIGHT
+  BOTTOM_LEFT
+  BOTTOM_RIGHT
 }
