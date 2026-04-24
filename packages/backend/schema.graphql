@@ -100,7 +100,14 @@ type DynamicPolygonProperties {
   centerPoint: GeoJsonPointFeature
 }
 
+type Icon {
+  name: String!
+  url: String!
+}
+
 # Fetch story query
 type Query {
   story(id: String!): Story
+  stories: [Story!]!
+  icons: [Icon!]!
  }

@@ -68,7 +68,7 @@ model DynamicPolygon {
   fillColor     String
   fillOpacity   Float
   lineColor     String
-  lineWidth     String
+  lineWidth     Float
   storyStepId   Int
   geometry      Json
   id            Int           @id @default(autoincrement())
@@ -106,4 +106,13 @@ enum ModalPosition {
   TOP_RIGHT
   BOTTOM_LEFT
   BOTTOM_RIGHT
+}
+
+// Studio-editable registry of map marker icons.
+// `name` is the key referenced by DynamicPoint.markerImage.
+// `url` can be either an absolute URL or a path served from /public (e.g. "/icons/tipi.png").
+model Icon {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+  url  String
 }

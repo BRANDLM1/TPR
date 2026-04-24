@@ -17,6 +17,7 @@ function transformPointToGeoJson( dbPoint: (DynamicPoint & { mediaItems?: any[] 
       description: dbPoint.description,
       color: dbPoint.color,
       markerImage: dbPoint.markerImage,
+      link: dbPoint.link,
       mediaItems: dbPoint.mediaItems,
     },
   };
@@ -25,9 +26,17 @@ function transformPointToGeoJson( dbPoint: (DynamicPoint & { mediaItems?: any[] 
 export const resolvers = {
 
     Query: {
+        stories: async (_parent: any, _args: any, context: Context) => {
+            return context.prisma.story.findMany({
+                orderBy: { title: 'asc' },
+            });
+        },
+        icons: async (_parent: any, _args: any, context: Context) => {
+            return context.prisma.icon.findMany({
+                orderBy: { name: 'asc' },
+            });
+        },
         story: async (_parent: any, { id }: { id: string }, context: Context) => {
-            console.log(`Fetching story with ID: ${id}`);
-
             const dbStory = await context.prisma.story.findUnique({
                 where: { id: id },
                 include: {
