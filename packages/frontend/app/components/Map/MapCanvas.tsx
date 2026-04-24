@@ -1,7 +1,7 @@
 'use client'
 import {useRef, useEffect, useState, useCallback} from 'react';
 import mapboxgl from 'mapbox-gl';
-import layerGroups from './layerGroup';
+import layerGroups, { availableLayerIds } from './layerGroup';
 import StoryModal from './StoryModal';
 import { useQuery } from '@apollo/client';
 import { GET_STORY_BY_ID, GET_ICONS } from '../../lib/queries';
@@ -231,17 +231,30 @@ export default function MapContainer() {
     const map = mapRef.current;
     if (!map || !map.isStyleLoaded()) return;
 
-    // Hide specified layers
+    // In dev, warn on layer ids that don't resolve — silent skips make
+    // Studio typos invisible. Prod stays quiet so end-users see no noise.
+    const warnUnknown = (layerId: string, field: 'layersToShow' | 'layersToHide') => {
+      if (process.env.NODE_ENV !== 'production' && !availableLayerIds.includes(layerId)) {
+        console.warn(
+          `[MapCanvas] StoryStep.${field} references unknown layer id "${layerId}". ` +
+          `Valid ids: ${availableLayerIds.join(', ')}`
+        );
+      }
+    };
+
     stepConfig.layersToHide.forEach(layerId => {
       if (map.getLayer(layerId)) {
         map.setLayoutProperty(layerId, 'visibility', 'none');
+      } else {
+        warnUnknown(layerId, 'layersToHide');
       }
     });
-    
-    // Show specified layers  
+
     stepConfig.layersToShow.forEach(layerId => {
       if (map.getLayer(layerId)) {
         map.setLayoutProperty(layerId, 'visibility', 'visible');
+      } else {
+        warnUnknown(layerId, 'layersToShow');
       }
     });
 
