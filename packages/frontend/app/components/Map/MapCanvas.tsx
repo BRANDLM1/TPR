@@ -16,11 +16,16 @@ interface VisionState {
   currentStep: number;
   showModal: boolean;
 }
+
+// Shape of the GeoJSON Feature objects the backend resolver emits for
+// dynamic points / polygons. Properties are open since Studio fields may grow.
+type GeoJsonFeature = GeoJSON.Feature<GeoJSON.Geometry, Record<string, unknown>>;
+
 interface StepConfig {
   layersToShow: string[];
   layersToHide: string[];
-  dynamicPoints?: any[];
-  dynamicPolygons?: any[];
+  dynamicPoints?: GeoJsonFeature[];
+  dynamicPolygons?: GeoJsonFeature[];
   zoom?: number;
   pitch?: number;
   bearing?: number;

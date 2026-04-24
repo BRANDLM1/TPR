@@ -13,7 +13,7 @@ export default function InitMap() {
         <nav className="fixed border-3 border-gray-950 top-0 left-0 z-50 w-full bg-white-100 backdrop-blur shadow-md">
           <div className = "flex items-center justify-between px-12 py-3">
             <div className="flex items-center space-x-6">
-                <img src={'./media/pictures/logo.png'} width="75" height="75"/>
+                <img src={'./media/pictures/logo.png'} width="75" height="75" alt="The Tipi Raisers"/>
             
             <h1 className="text-5xl font-fell text-white">The Tipi Raisers</h1>
             </div>

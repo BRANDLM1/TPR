@@ -18,6 +18,7 @@
     "db:pull": "dotenv -- npx prisma db pull --schema=./packages/backend/prisma/schema.prisma"
   },
   "devDependencies": {
+    "concurrently": "^9.0.0",
     "dotenv-cli": "^10.0.0",
     "eslint": "^8.0.0",
     "postcss": "^8.5.6",
@@ -25,18 +26,5 @@
     "postcss-simple-vars": "^7.0.1",
     "prettier": "^3.0.0",
     "typescript": "^5.8.3"
-  },
-  "dependencies": {
-    "@apollo/client": "^3.13.9",
-    "@mantine/core": "^8.1.3",
-    "@mantine/hooks": "^8.1.3",
-    "@mantine/modals": "^8.1.3",
-    "@types/mapbox-gl": "^3.4.1",
-    "graphql": "^16.11.0",
-    "mapbox-gl": "^3.13.0",
-    "next": "^15.3.5",
-    "react-icons": "^5.5.0",
-    "react-map-gl": "^8.0.4",
-    "react-select": "^5.10.2"
   }
 }
