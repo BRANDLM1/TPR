@@ -68,7 +68,7 @@ export default function MapContainer() {
     map.on('load', () => {
       const layersToHide = [
           'admin-1-boundary',     // US State lines
-          '/admin-1-boundary-bg'   // Background of state lines
+          'admin-1-boundary-bg'   // Background of state lines
       ]
       layersToHide.forEach(id => {
           if (map.getLayer(id)){
