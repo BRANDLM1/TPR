@@ -13,6 +13,8 @@ node_modules
 .idea/
 .env
 .env.*
+# ...but keep the template, which is safe to commit
+!.env.example
 
 # Dependencies for ALL packages
 # The wildcard ** matches any subdirectory
