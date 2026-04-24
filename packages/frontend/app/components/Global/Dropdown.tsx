@@ -2,37 +2,46 @@
 
 import React from 'react';
 import Select from 'react-select';
-import visionOptions from './visionOptions';
+import { useQuery } from '@apollo/client';
+import { GET_STORIES } from '../../lib/queries';
 
 type OptionType = {
   value: string;
   label: string;
-  };
-  
-const Dropdown = ({value, onChange}: { 
-  value: string | null; 
+};
+
+type StoriesQueryResult = {
+  stories: Array<{ id: string; title: string }>;
+};
+
+const Dropdown = ({
+  value,
+  onChange,
+}: {
+  value: string | null;
   onChange: (value: string) => void;
 }) => {
-  // Find the selected option object based on the value string
-  const selectedOption = visionOptions.find((option) => option.value === value) || null;
+  const { data, loading, error } = useQuery<StoriesQueryResult>(GET_STORIES);
 
-  console.log('[Dropdown] Rendering with value:', value);
-  console.log('[Dropdown] Matched selectedOption:', selectedOption);
+  const options: OptionType[] =
+    data?.stories.map((s) => ({ value: s.id, label: s.title })) ?? [];
+
+  const selectedOption = options.find((o) => o.value === value) ?? null;
 
   const handleChange = (option: OptionType | null) => {
-    if (option && typeof onChange === 'function'){
-        console.log("Dropdown.handleChange fired with:", option.value);
-        onChange(option.value);
-      }
+    if (option) onChange(option.value);
   };
 
   return (
-      <Select
+    <Select
       value={selectedOption}
       onChange={handleChange}
-      options={visionOptions}
+      options={options}
       isSearchable={false}
-      placeholder="Select a Vision..."
+      isLoading={loading}
+      placeholder={
+        error ? 'Unable to load stories' : loading ? 'Loading…' : 'Select a Vision...'
+      }
     />
   );
 };

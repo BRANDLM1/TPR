@@ -1,78 +1,56 @@
 'use client';
 import { Modal } from '@mantine/core';
 
+export type MediaItem = {
+  id: string;
+  order: number;
+  type: 'IMAGE' | 'VIDEO';
+  source: string;
+  alt?: string | null;
+  caption?: string | null;
+};
+
+export type ModalPosition =
+  | 'CENTER'
+  | 'TOP_LEFT'
+  | 'TOP_RIGHT'
+  | 'BOTTOM_LEFT'
+  | 'BOTTOM_RIGHT';
+
 interface StoryModalProps {
   isOpen: boolean;
   content: {
     title: string;
     content: string;
-    media?: {
-      type: 'image' | 'video';
-      src: string;
-      alt?: string;
-      poster?: string;
-    };
+    mediaItems?: MediaItem[];
     nextButtonText?: string;
     canGoBack: boolean;
     isLastStep: boolean;
   } | null;
+  position?: ModalPosition;
   onNext: () => void;
   onBack: () => void;
   onClose: () => void;
-
-  position?: 'CENTER' | 'TOP_LEFT' | 'TOP_RIGHT' | 'BOTTOM_LEFT' | 'BOTTOM_RIGHT';
-
 }
 
-export default function StoryModal({ 
-  isOpen, 
-  content, 
-  onNext, 
-  onBack, 
+const POSITION_STYLES: Record<Exclude<ModalPosition, 'CENTER'>, React.CSSProperties> = {
+  TOP_LEFT: { position: 'fixed', top: 20, left: 20, transform: 'none', margin: 0 },
+  TOP_RIGHT: { position: 'fixed', top: 20, right: 20, transform: 'none', margin: 0 },
+  BOTTOM_LEFT: { position: 'fixed', bottom: 20, left: 20, transform: 'none', margin: 0 },
+  BOTTOM_RIGHT: { position: 'fixed', bottom: 20, right: 20, transform: 'none', margin: 0 },
+};
+
+export default function StoryModal({
+  isOpen,
+  content,
+  position = 'CENTER',
+  onNext,
+  onBack,
   onClose,
-  position = 'CENTER'
 }: StoryModalProps) {
   if (!content) return null;
 
-  const getPositionStyles = () => {
-    switch (position) {
-      case 'TOP_LEFT':
-        return {
-          position: 'fixed' as const,
-          top: '20px',
-          left: '20px',
-          transform: 'none',
-          margin: 0
-        };
-      case 'TOP_RIGHT':
-        return {
-          position: 'fixed' as const,
-          top: '20px',
-          right: '20px',
-          transform: 'none',
-          margin: 0
-        };
-      case 'BOTTOM_LEFT':
-        return {
-          position: 'fixed' as const,
-          bottom: '20px',
-          left: '20px',
-          transform: 'none',
-          margin: 0
-        };
-      case 'BOTTOM_RIGHT':
-        return {
-          position: 'fixed' as const,
-          bottom: '20px',
-          right: '20px',
-          transform: 'none',
-          margin: 0
-        };
-      case 'CENTER':
-      default:
-        return {};
-    }
-  };
+  const contentStyle = position === 'CENTER' ? {} : POSITION_STYLES[position];
 
   return (
     <Modal
@@ -80,45 +58,45 @@ export default function StoryModal({
       onClose={onClose}
       title={content.title}
       size="lg"
-      centered
+      centered={position === 'CENTER'}
+      withOverlay={position === 'CENTER'}
       styles={{
-        title: { 
-          fontSize: '2rem', 
+        title: {
+          fontSize: '2rem',
           fontWeight: 'bold',
-          fontFamily: 'var(--font-fell)' 
+          fontFamily: 'var(--font-fell)',
         },
-        content: position !== 'CENTER' ? getPositionStyles() : {}
+        content: contentStyle,
       }}
     >
       <div className="story-modal-content">
-        {/* Media */}
-        {content.media && (
-          <div className="mb-6">
-            {content.media.type === 'image' ? (
-              <img 
-                src={content.media.src} 
-                alt={content.media.alt || content.title}
+        {content.mediaItems?.map((media) => (
+          <figure key={media.id} className="mb-6">
+            {media.type === 'IMAGE' ? (
+              <img
+                src={media.source}
+                alt={media.alt ?? content.title}
                 className="w-full rounded-lg shadow-md"
               />
             ) : (
-              <video 
-                src={content.media.src}
-                poster={content.media.poster}
+              <video
+                src={media.source}
                 controls
                 className="w-full rounded-lg shadow-md"
               />
             )}
-          </div>
-        )}
+            {media.caption && (
+              <figcaption className="mt-2 text-sm text-gray-600 font-lato">
+                {media.caption}
+              </figcaption>
+            )}
+          </figure>
+        ))}
 
-        {/* Content Text */}
         <div className="mb-8">
-          <p className="text-lg leading-relaxed font-lato">
-            {content.content}
-          </p>
+          <p className="text-lg leading-relaxed font-lato">{content.content}</p>
         </div>
 
-        {/* Buttons */}
         <div className="flex justify-between items-center">
           <div>
             {content.canGoBack && (
@@ -130,7 +108,7 @@ export default function StoryModal({
               </button>
             )}
           </div>
-          
+
           <button
             onClick={onNext}
             className="bg-amber-300 text-black px-8 py-3 rounded-lg hover:bg-amber-400 transition-colors font-lato font-bold text-lg"

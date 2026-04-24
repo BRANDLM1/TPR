@@ -1,5 +1,23 @@
 import { gql } from '@apollo/client';
 
+export const GET_STORIES = gql`
+  query GetStories {
+    stories {
+      id
+      title
+    }
+  }
+`;
+
+export const GET_ICONS = gql`
+  query GetIcons {
+    icons {
+      name
+      url
+    }
+  }
+`;
+
 export const GET_STORY_BY_ID = gql`
   query GetStoryById($id: String!) {
     story(id: $id) {
