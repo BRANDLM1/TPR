@@ -84,13 +84,22 @@ export default function MapContainer() {
         },
       });
       map.addLayer({
-        id: 'dynamic-polygons-layer',
+        id: 'dynamic-polygons-fill-layer',
         source: 'dynamic-polygons-source',
         type: 'fill',
-        paint: { 
-          'fill-color': '#088',
-          'fill-opacity': 0.5,
-          'fill-outline-color': '#000000', }
+        paint: {
+          'fill-color': ['coalesce', ['get', 'fillColor'], '#088'],
+          'fill-opacity': ['coalesce', ['get', 'fillOpacity'], 0.5],
+        },
+      });
+      map.addLayer({
+        id: 'dynamic-polygons-line-layer',
+        source: 'dynamic-polygons-source',
+        type: 'line',
+        paint: {
+          'line-color': ['coalesce', ['get', 'lineColor'], '#000000'],
+          'line-width': ['coalesce', ['get', 'lineWidth'], 1],
+        },
       });
 
       map.addSource('dynamic-points-source',{

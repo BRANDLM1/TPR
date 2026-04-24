@@ -87,6 +87,7 @@ export const resolvers = {
                 type: 'Feature',
                 geometry: dbPolygon.geometry as any,
                 properties: {
+                    id: dbPolygon.id,
                     name: dbPolygon.name,
                     fillColor: dbPolygon.fillColor,
                     fillOpacity: dbPolygon.fillOpacity,
