@@ -57,6 +57,7 @@ model DynamicPoint {
   color                 String?
   markerImage           String?
   storyStepId           Int
+  order                 Int             @default(0)
   id                    Int             @id @default(autoincrement())
   storyStep             StoryStep       @relation(fields: [storyStepId], references: [id])
   centerPointForPolygon DynamicPolygon? @relation("DynamicPointRelation")
@@ -70,6 +71,7 @@ model DynamicPolygon {
   lineColor     String
   lineWidth     Float
   storyStepId   Int
+  order         Int           @default(0)
   geometry      Json
   id            Int           @id @default(autoincrement())
   centerPointId Int?          @unique

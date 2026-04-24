@@ -51,11 +51,13 @@ export const resolvers = {
                         include: {
                             mediaItems: { orderBy: { order: 'asc' } },
                             dynamicPoints: {
+                                orderBy: { order: 'asc' },
                                 include: {
                                     mediaItems: { orderBy: { order: 'asc' } },
                                 },
                             },
                             dynamicPolygons: {
+                                orderBy: { order: 'asc' },
                                 include: {
                                     centerPoint: {
                                         include: {
