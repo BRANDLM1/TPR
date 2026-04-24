@@ -2,12 +2,11 @@
 import { useState } from 'react';
 import MapCanvas from "./MapCanvas"
 import FadeIn from '../Animations/FadeIn'
-import IntroModal from '../Map/Layers/Main/IntroModal'
 
 export default function InitMap() {
-  const [shopwMap, setShowMap] = useState(false);
+  const [showMap, setShowMap] = useState(false);
 
-    if (!shopwMap) {
+    if (!showMap) {
       return(
       <div className="w-full h-full flex flex-col justify-center items-center bg-gray-950 text-white py-20 shadow-lg">
         
@@ -45,7 +44,6 @@ export default function InitMap() {
   // Else render map if showMap is true
   return (
     <div className="w-full h-full">
-      <IntroModal/>
       <MapCanvas accessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN} />
     </div>
   );
