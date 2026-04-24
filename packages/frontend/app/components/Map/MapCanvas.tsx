@@ -44,7 +44,7 @@ export default function MapContainer() {
     showModal: false
   });
   const [mapLoaded, setMapLoaded] = useState(false);
-  const { loading, error, data: storyData } = useQuery(GET_STORY_BY_ID, {
+  const { loading, error, data: storyData, refetch } = useQuery(GET_STORY_BY_ID, {
     variables: { id: VisionState.currentStory }, // Pass the selected story ID
     skip: !VisionState.currentStory, // IMPORTANT: Don't run the query until a story is selected
   });
@@ -331,16 +331,20 @@ export default function MapContainer() {
       return {
         content: { title: 'Loading...', content: '', canGoBack: false, isLastStep: false },
         position: 'CENTER' as const,
+        isErrorState: false,
       };
     if (error)
       return {
         content: {
-          title: 'Error',
-          content: 'Could not load story.',
+          title: "We couldn't load this story",
+          content:
+            'There was a problem reaching the server. Please check your connection and try again.',
+          nextButtonText: 'Retry',
           canGoBack: false,
           isLastStep: false,
         },
         position: 'CENTER' as const,
+        isErrorState: true,
       };
 
     if (!storyData || !storyData.story || !VisionState.showModal) return null;
@@ -363,6 +367,7 @@ export default function MapContainer() {
         | 'TOP_RIGHT'
         | 'BOTTOM_LEFT'
         | 'BOTTOM_RIGHT',
+      isErrorState: false,
     };
   };
 
@@ -375,7 +380,7 @@ export default function MapContainer() {
         isOpen={VisionState.showModal}
           content={modalState.content}
           position={modalState.position}
-          onNext={handleStoryNext}
+          onNext={modalState.isErrorState ? () => refetch() : handleStoryNext}
           onBack={handleStoryBack}
           onClose={() => setVisionState(prev => ({ ...prev, showModal: false }))}/>
     )}
