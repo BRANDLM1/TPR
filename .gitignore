@@ -23,3 +23,8 @@ node_modules
 .next/
 
 /generated/prisma
+
+# GCP service account credentials — never commit
+**/tipiraisers-*.json
+**/*-service-account*.json
+*.gcp.json
