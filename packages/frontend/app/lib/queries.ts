@@ -18,6 +18,21 @@ export const GET_ICONS = gql`
   }
 `;
 
+export const GET_SITE_SETTINGS = gql`
+  query GetSiteSettings {
+    siteSettings {
+      organizationName
+      landingTitle
+      landingSubtitle
+      landingCtaText
+      donateUrl
+      donateLabel
+      contactUrl
+      contactLabel
+    }
+  }
+`;
+
 export const GET_STORY_BY_ID = gql`
   query GetStoryById($id: String!) {
     story(id: $id) {
