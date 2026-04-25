@@ -1,5 +1,16 @@
 import { gql } from '@apollo/client';
 
+const MEDIA_ITEM_FIELDS = gql`
+  fragment MediaItemFields on MediaItem {
+    id
+    order
+    type
+    source
+    alt
+    caption
+  }
+`;
+
 export const GET_STORIES = gql`
   query GetStories {
     stories {
@@ -45,12 +56,7 @@ export const GET_STORY_BY_ID = gql`
         content
         link
         mediaItems {
-          id
-          order
-          type
-          source
-          alt
-          caption
+          ...MediaItemFields
         }
         layersToShow
         layersToHide
@@ -65,12 +71,7 @@ export const GET_STORY_BY_ID = gql`
             name
             description
             mediaItems {
-              id
-              order
-              type
-              source
-              alt
-              caption
+              ...MediaItemFields
             }
             color
             markerImage
@@ -102,13 +103,8 @@ export const GET_STORY_BY_ID = gql`
                 description
                 color
                 markerImage
-                mediaItems{
-                  id
-                  order
-                  type
-                  source
-                  alt
-                  caption
+                mediaItems {
+                  ...MediaItemFields
                 }
               }
             }
@@ -129,15 +125,11 @@ export const GET_STORY_BY_ID = gql`
         statistic
         content
         mediaItems {
-          id
-          order
-          type
-          source
-          alt
-          caption
+          ...MediaItemFields
         }
         link
       }
     }
   }
+  ${MEDIA_ITEM_FIELDS}
 `;

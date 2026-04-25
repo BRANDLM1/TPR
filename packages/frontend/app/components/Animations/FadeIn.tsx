@@ -1,6 +1,13 @@
-import { useEffect, useState } from 'react';
+'use client';
+import { ReactNode, useEffect, useState } from 'react';
 
-const FadeIn = ({ children, duration = 1000, delay = 100 }) => {
+interface FadeInProps {
+  children: ReactNode;
+  duration?: number;
+  delay?: number;
+}
+
+export default function FadeIn({ children, duration = 1000, delay = 100 }: FadeInProps) {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
@@ -16,6 +23,4 @@ const FadeIn = ({ children, duration = 1000, delay = 100 }) => {
       {children}
     </div>
   );
-};
-
-export default FadeIn;
+}
