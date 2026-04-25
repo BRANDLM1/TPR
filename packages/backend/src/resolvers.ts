@@ -36,6 +36,15 @@ export const resolvers = {
                 orderBy: { name: 'asc' },
             });
         },
+        siteSettings: async (_parent: any, _args: any, context: Context) => {
+            // Singleton row (id = 1). upsert returns defaults on a fresh DB
+            // so a missing seed never breaks the frontend.
+            return context.prisma.siteSettings.upsert({
+                where: { id: 1 },
+                update: {},
+                create: { id: 1 },
+            });
+        },
         story: async (_parent: any, { id }: { id: string }, context: Context) => {
             const dbStory = await context.prisma.story.findUnique({
                 where: { id: id },
