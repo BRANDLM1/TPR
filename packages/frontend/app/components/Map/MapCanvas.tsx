@@ -291,21 +291,26 @@ export default function MapContainer() {
       polygonsSource.setData(polygonsData);
     }
 
-    if (stepConfig.latitude != null && stepConfig.longitude != null) {
-      map.flyTo({
-        center: [stepConfig.longitude, stepConfig.latitude],
-        zoom: stepConfig.zoom,
-        pitch: stepConfig.pitch,
-        bearing: stepConfig.bearing,
-        essential: true, // Prioritize recentering
-      });
-    }
+    // Always fly somewhere on a step change — to the step's coords if set,
+    // otherwise back to HOME_VIEW. This makes Back/Continue and dropdown
+    // re-selects feel deliberate even when staff leave a step's lat/lng
+    // null in Studio. Pitch/bearing fall back to 0 when not set so a step
+    // without orientation undoes the previous step's orientation.
+    const hasCoords = stepConfig.latitude != null && stepConfig.longitude != null;
+    map.flyTo({
+      center: hasCoords ? [stepConfig.longitude!, stepConfig.latitude!] : HOME_VIEW.center,
+      zoom: hasCoords ? (stepConfig.zoom ?? HOME_VIEW.zoom) : HOME_VIEW.zoom,
+      pitch: stepConfig.pitch ?? 0,
+      bearing: stepConfig.bearing ?? 0,
+      essential: true,
+    });
   }, []);
 
-  // Hide every static layer added from layerGroups, clear dynamic sources,
-  // and snap the camera back to HOME_VIEW. The snap guarantees that picking
-  // a story whose step 0 doesn't set lat/lng still resets position; if step
-  // 0 does set its own coords, applyLayerChanges flies there from home.
+  // Hide static layers from the previous story so step 0 of the new one
+  // starts from a known visibility state. Dynamic point/polygon sources
+  // are not emptied here — applyLayerChanges immediately replaces them
+  // with the new step's data, and an empty interim was racing with that
+  // setData call on Mapbox's side.
   const resetMapState = useCallback(() => {
     const map = mapRef.current;
     if (!map || !map.isStyleLoaded()) return;
@@ -315,12 +320,6 @@ export default function MapContainer() {
         map.setLayoutProperty(layerId, 'visibility', 'none');
       }
     });
-
-    const empty = { type: 'FeatureCollection' as const, features: [] };
-    (map.getSource('dynamic-points-source') as mapboxgl.GeoJSONSource | undefined)?.setData(empty);
-    (map.getSource('dynamic-polygons-source') as mapboxgl.GeoJSONSource | undefined)?.setData(empty);
-
-    map.jumpTo(HOME_VIEW);
   }, []);
 
   // Apply the current step whenever data/step/map-readiness changes.
