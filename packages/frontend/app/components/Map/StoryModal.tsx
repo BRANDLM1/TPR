@@ -62,6 +62,14 @@ export default function StoryModal({
       size="lg"
       centered={position === 'CENTER'}
       withOverlay={position === 'CENTER'}
+      // Lock the user into the story sequence: no X button, no Esc,
+      // no click-outside dismiss. The only ways out are Next/Back
+      // through the steps, the final-step "Explore" button (which
+      // hands them the map), or picking a different story from the
+      // dropdown (which resets state).
+      withCloseButton={false}
+      closeOnEscape={false}
+      closeOnClickOutside={false}
       styles={{
         title: {
           fontSize: '2rem',
