@@ -21,6 +21,16 @@ interface VisionState {
   sessionId: number;
 }
 
+// Camera "home" — used both to initialize the map and to snap back on
+// resetMapState so a re-selected story always starts from a clean view
+// even if its step 0 leaves latitude/longitude null in Studio.
+const HOME_VIEW = {
+  center: [-105.8, 39.5] as [number, number],
+  zoom: 6,
+  pitch: 0,
+  bearing: 0,
+};
+
 // Shape of the GeoJSON Feature objects the backend resolver emits for
 // dynamic points / polygons. Properties are open since Studio fields may grow.
 type GeoJsonFeature = GeoJSON.Feature<GeoJSON.Geometry, Record<string, unknown>>;
@@ -61,8 +71,8 @@ export default function MapContainer() {
     const map = new mapboxgl.Map({
       container: containerRef.current!,
       style: 'mapbox://styles/mapbox/outdoors-v11',
-      center: [-105.8, 39.5],
-      zoom: 6,
+      center: HOME_VIEW.center,
+      zoom: HOME_VIEW.zoom,
       maxBounds: [-129.533,24.132,-66.896,52.180],
       minZoom: 1,
       maxZoom: 10,
@@ -292,7 +302,10 @@ export default function MapContainer() {
     }
   }, []);
 
-  // Hide every static layer added from layerGroups and clear dynamic sources.
+  // Hide every static layer added from layerGroups, clear dynamic sources,
+  // and snap the camera back to HOME_VIEW. The snap guarantees that picking
+  // a story whose step 0 doesn't set lat/lng still resets position; if step
+  // 0 does set its own coords, applyLayerChanges flies there from home.
   const resetMapState = useCallback(() => {
     const map = mapRef.current;
     if (!map || !map.isStyleLoaded()) return;
@@ -306,6 +319,8 @@ export default function MapContainer() {
     const empty = { type: 'FeatureCollection' as const, features: [] };
     (map.getSource('dynamic-points-source') as mapboxgl.GeoJSONSource | undefined)?.setData(empty);
     (map.getSource('dynamic-polygons-source') as mapboxgl.GeoJSONSource | undefined)?.setData(empty);
+
+    map.jumpTo(HOME_VIEW);
   }, []);
 
   // Apply the current step whenever data/step/map-readiness changes.
