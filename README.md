@@ -19,9 +19,9 @@ This README is the operational guide for the staff and future developers who may
 9. [Adding a new map base layer (developer task)](#9-adding-a-new-map-base-layer-developer-task)
 10. [GraphQL API](#10-graphql-api)
 11. [Migrations and schema changes](#11-migrations-and-schema-changes)
-12. [Deployment](#12-deployment)
+12. [Launching to production](#12-launching-to-production)
 13. [Troubleshooting](#13-troubleshooting)
-14. [Future improvements](#14-future-improvements)
+14. [Post-launch follow-up](#14-post-launch-follow-up)
 
 ---
 
@@ -363,23 +363,145 @@ For singleton tables (like `SiteSettings`) the migration should `INSERT ... ON C
 
 Avoid `db:pull` unless you've edited the database out-of-band — Prisma is the source of truth in this repo, not the live schema.
 
-## 12. Deployment
+## 12. Launching to production
 
-The current plan (per the capstone report) is to host the Explorer alongside `thetipiraisers.org` either on a subdomain or embedded as a page. That decision will dictate the host:
+The Explorer has three deployable pieces and one external dependency. To go live, an owner needs to provision and connect all four:
 
-**Frontend (Next.js)**
-- Vercel is the lowest-friction host: connect the repo, set `NEXT_PUBLIC_GRAPHQL_ENDPOINT` and `NEXT_PUBLIC_MAPBOX_TOKEN` as project env vars, deploy.
-- Set the project root to `packages/frontend` (or use a Vercel monorepo config).
-- Lock the Mapbox token down by setting URL restrictions in the Mapbox account.
+| Piece | What it is | Who hosts it |
+| --- | --- | --- |
+| Frontend | The Next.js app the public visits | Subdomain on `thetipiraisers.org` **or** Vercel |
+| Backend | The Apollo GraphQL server | Render / Fly / Railway / similar |
+| Database | PostgreSQL | Supabase / Neon / RDS / similar |
+| Mapbox token | Public access token used by the map | A Mapbox account owned by the org |
 
-**Backend (Apollo + Postgres)**
-- Any Node host works (Render, Fly, Railway, a small EC2). The server reads `DATABASE_URL` and listens on port 4000 by default — change the port in `apollo.ts` if your host requires it.
-- The Postgres instance can be managed (Supabase, Neon, RDS) or self-hosted. Whichever it is, run `prisma migrate deploy` (not `migrate dev`) on the first boot to apply migrations idempotently.
+Recommended order to set them up: **DB first → backend → Mapbox token → frontend**. Each step depends on the one before it.
 
-**Mapbox usage**
-- Free tier: 50k map renders + 100k vector tile renders / month.
-- The landing splash is intentional, gating the map mount to prevent abuse.
-- Add Mapbox URL restrictions to the production token to prevent token theft.
+### Step 1 — Provision the production database
+
+Pick a managed Postgres provider. For this scale, free tiers are sufficient:
+- **Supabase** (free tier: 500 MB) — easiest, includes a web SQL editor.
+- **Neon** (free tier: 0.5 GB) — serverless, scales to zero between requests.
+- **AWS RDS / DigitalOcean / etc.** — only if the org already uses one.
+
+After provisioning, you'll get a connection string like `postgresql://user:pass@host:5432/dbname`. Save it; this becomes `DATABASE_URL` everywhere.
+
+**Recommended:** create **two database roles**, not one:
+- A **migration role** with full DDL privileges (creates tables, alters columns). Used only when running migrations.
+- A **runtime role** with `SELECT/INSERT/UPDATE/DELETE` on the app tables, but **no DDL**. Used by the running backend.
+
+This means a compromised backend can't drop tables. It's optional but cheap insurance for production.
+
+Apply the schema:
+
+```bash
+# from a machine with the migration role's URL in DATABASE_URL
+DATABASE_URL="postgresql://migration-role@..." \
+  npx prisma migrate deploy --schema=./packages/backend/prisma/schema.prisma
+```
+
+> Use `migrate deploy`, **not** `migrate dev`. `deploy` applies pending migrations idempotently without prompting. `dev` prompts for confirmation and can reset the DB — never run it in production.
+
+After the migration, verify in Prisma Studio (or any SQL client) that the `SiteSettings` row exists with `id = 1`. If for some reason it doesn't, insert it: `INSERT INTO "SiteSettings" ("id") VALUES (1) ON CONFLICT DO NOTHING;`.
+
+Then have staff open `SiteSettings` in Studio and customize the copy / URLs before launch.
+
+### Step 2 — Add a backend production build + start script
+
+The backend currently runs on `ts-node-dev` in development. For production we need a real build step.
+
+**One-time edits**, before the first backend deploy:
+
+1. In `packages/backend/package.json`, add scripts:
+
+   ```json
+   "scripts": {
+     "build": "tsc",
+     "start": "node dist/services/apollo.js",
+     "dev": "dotenv -e ../../.env.local -- ts-node-dev --respawn --transpile-only src/services/apollo.ts"
+   }
+   ```
+
+2. In `packages/backend/src/services/apollo.ts`, make the listen port configurable so the host can inject it:
+
+   ```ts
+   const port = Number(process.env.PORT) || 4000;
+   await startStandaloneServer(server, { listen: { port } });
+   ```
+
+3. The Apollo server reads `../../schema.graphql` relative to the *compiled* file. After `tsc`, that path resolves to `packages/backend/schema.graphql` from `dist/services/`. Verify by running `npm run build && npm start` locally before deploying — if it fails to find the schema, copy `schema.graphql` into `dist/` as part of the build script (e.g. `"build": "tsc && cp schema.graphql dist/"`).
+
+4. **Tighten CORS** before exposing publicly. Apollo standalone mode defaults to allowing all origins; in production, restrict to the frontend's domain:
+
+   ```ts
+   await startStandaloneServer(server, {
+     listen: { port },
+     context: async () => ({ prisma }),
+     // restrict to your frontend
+     cors: { origin: ['https://vision2035.thetipiraisers.org'] },
+   });
+   ```
+
+### Step 3 — Deploy the backend
+
+Pick a Node host. **Render** is the easiest — free tier with cold starts, ~$7/mo for always-on. Fly and Railway are equivalent.
+
+On the host:
+1. Connect the repo, set the build command to `npm install && npm run build --workspace=backend` and start command to `npm start --workspace=backend`.
+2. Set environment variable `DATABASE_URL` = the **runtime role's** connection string (not the migration one).
+3. The host will assign a public URL, e.g. `https://tpr-backend.onrender.com`. Save this; it becomes `NEXT_PUBLIC_GRAPHQL_ENDPOINT` for the frontend.
+4. Hit `https://<your-backend-url>/` in a browser — you should see the Apollo Sandbox landing page. Run a `query { stories { id title } }` to confirm the DB connection works.
+
+**Whenever the schema changes after launch:** the migration role must run `prisma migrate deploy` against production *before* deploying the new backend code. If you deploy code that expects a column the DB doesn't have, the resolvers will throw. The safe order is always: migrate first, then deploy code.
+
+### Step 4 — Hand over the Mapbox account
+
+The app uses Mapbox's public `outdoors-v11` style — there's nothing custom on your account that needs transferring. What's tied to your account is just the **public access token**.
+
+Cleanest handover (5 minutes):
+
+1. Org creates a Mapbox account at https://account.mapbox.com/.
+2. In their dashboard → **Tokens** → **Create a token**.
+3. Set scope to **Public** (default scopes are fine).
+4. **Critical: add URL restrictions** under "URL restrictions" before saving. List exactly the domains the token may be used from, e.g.:
+   - `https://vision2035.thetipiraisers.org`
+   - `https://www.thetipiraisers.org` (if embedding)
+
+   Without this, anyone who views the page source can copy the token and burn through the org's free-tier quota on their own sites.
+
+5. Copy the token (starts with `pk.`). This is the new `NEXT_PUBLIC_MAPBOX_TOKEN`.
+6. Billing now lives on the org's account. The free tier (50k map renders + 100k vector-tile renders / month) is enough for the expected traffic; the landing splash gating the map mount keeps casual visitors from burning renders unnecessarily.
+
+The token in your dev environment can stay as-is or be revoked once the org's token is in production.
+
+### Step 5 — Deploy the frontend
+
+Two options:
+
+**Option A — Vercel (lowest friction).**
+1. Import the repo. Set the project root to `packages/frontend`.
+2. Add environment variables in Vercel:
+   - `NEXT_PUBLIC_GRAPHQL_ENDPOINT` = the backend URL from Step 3 (e.g. `https://tpr-backend.onrender.com/`)
+   - `NEXT_PUBLIC_MAPBOX_TOKEN` = the org's new token from Step 4
+3. Deploy. Vercel returns a `*.vercel.app` URL.
+4. Add the custom domain (e.g. `vision2035.thetipiraisers.org`). Vercel gives a CNAME target; the org's IT person adds it to the DNS record for `thetipiraisers.org`.
+
+**Option B — Subdomain on existing hosting.**
+If their existing host can serve a Node app, build with `npm run build --workspace=frontend` and serve `packages/frontend/.next` with `npm run start --workspace=frontend`. Same env vars as above. This route is more work and only worth it if their IT prefers everything under one host.
+
+After DNS propagates (minutes to a few hours), the Explorer is live at `vision2035.thetipiraisers.org`.
+
+### Launch checklist
+
+Before flipping DNS, walk through:
+
+- [ ] Production DB is migrated (`prisma migrate deploy` ran cleanly).
+- [ ] `SiteSettings` row exists; staff have edited copy + URLs.
+- [ ] At least one `Story` with at least one `StoryStep` exists, otherwise the dropdown is empty.
+- [ ] Backend is reachable at the URL set in `NEXT_PUBLIC_GRAPHQL_ENDPOINT`.
+- [ ] Backend CORS allows the frontend's production origin.
+- [ ] Mapbox token has URL restrictions matching the production domain.
+- [ ] Mapbox token in production env vars is the org's, not yours.
+- [ ] Click through every story end-to-end on the staging URL once.
 
 ## 13. Troubleshooting
 
@@ -399,14 +521,16 @@ The current plan (per the capstone report) is to host the Explorer alongside `th
 
 **Studio shows no `SiteSettings` row.** The migration includes an `INSERT ... ON CONFLICT DO NOTHING`. If your DB pre-dates that migration, add the row manually with `id = 1` — the server's `siteSettings` resolver will also upsert on first read.
 
-## 14. Future improvements
+## 14. Post-launch follow-up
 
-Open work, in rough priority order:
+**Scheduled ETL from Google Sheets.** A Python script lives at `packages/backend/src/services/etl.py` but isn't wired to a scheduler. The Communications team's impact data (food-box deliveries, etc.) is maintained in a Google Sheet today; rather than asking staff to also keep `ImpactStat` rows in Studio in sync, schedule the ETL to pull the sheet into the DB on a cadence.
 
-1. **Backend production build step.** Add `tsc`/`tsup` + a `start` script so production doesn't depend on `ts-node`.
-2. **Scheduled ETL from Google Sheets.** A Python script (`packages/backend/src/services/etl.py`) is in place but not scheduled. Wire it up to a cron job or Google Cloud Scheduler so impact statistics update without staff touching Studio. Keep its DB role narrowly scoped (write-only on `ImpactStat`).
-3. **Authenticated content for sensitive blog/event material.** A lightweight CAPTCHA on the landing CTA, or a credential-gated section, would harden against scraping bots if the org wants to host less-public material.
-4. **Custom Mapbox tilesets for heavy data viz.** When dense statistical layers (heatmaps, choropleths) become available, register them in `layerGroup.ts` so steps can toggle them. Doing it this way keeps render counts low.
-5. **Automated tests.** None today. Useful starting points: a Jest/Vitest test on the GeoJSON transform in `resolvers.ts`, plus a Playwright test that loads a story and clicks through every step.
+Setup:
+1. Create a Google Cloud service account with read access to the sheet, download its JSON key, store it somewhere your scheduler can read (do **not** commit it).
+2. Set env vars on whatever host runs the script: `GCP_CREDENTIALS_PATH`, `DATABASE_URL`, `ETL_SHEET_NAME`, `ETL_TABLE_NAME`.
+3. Schedule it: Google Cloud Scheduler → Cloud Run job, or a cron line on whatever VM you already pay for. Daily is plenty.
+4. **Use a third DB role** for the ETL: `INSERT/UPDATE/DELETE` on `ImpactStat` only, no DDL, no access to other tables. Same rationale as the migration/runtime split.
+
+Once this is in place, the Communications team's existing workflow (editing the Sheet) keeps the site current without them ever opening Studio.
 ---
 Built during a 10-week internship with The Tipi Raisers.
