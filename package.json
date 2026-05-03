@@ -12,10 +12,10 @@
     "build:frontend": "npm run build --workspace=frontend",
     "build:backend": "npm run build --workspace=backend",
     "install:all": "npm install --workspace=frontend && npm install --workspace=backend",
-    "db:migrate": "dotenv -- npx prisma migrate dev --schema=./packages/backend/prisma/schema.prisma",
-    "db:generate": "dotenv -- npx prisma generate --schema=./packages/backend/prisma/schema.prisma",
-    "db:studio": "dotenv -- npx prisma studio --schema=./packages/backend/prisma/schema.prisma",
-    "db:pull": "dotenv -- npx prisma db pull --schema=./packages/backend/prisma/schema.prisma"
+    "db:migrate": "dotenv -e .env.local -- npx prisma migrate dev --schema=./packages/backend/prisma/schema.prisma",
+    "db:generate": "dotenv -e .env.local -- npx prisma generate --schema=./packages/backend/prisma/schema.prisma",
+    "db:studio": "dotenv -e .env.local -- npx prisma studio --schema=./packages/backend/prisma/schema.prisma",
+    "db:pull": "dotenv -e .env.local -- npx prisma db pull --schema=./packages/backend/prisma/schema.prisma"
   },
   "devDependencies": {
     "concurrently": "^9.0.0",
