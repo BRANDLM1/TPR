@@ -39,6 +39,11 @@ const Dropdown = ({
       options={options}
       isSearchable={false}
       isLoading={loading}
+      // Treat every option as unselected so picking the currently-active
+      // story still fires onChange — that's what restarts the experience.
+      // The `value` prop above keeps the visual indicator of which story
+      // is active.
+      isOptionSelected={() => false}
       placeholder={
         error ? 'Unable to load stories' : loading ? 'Loading…' : 'Select a Vision...'
       }

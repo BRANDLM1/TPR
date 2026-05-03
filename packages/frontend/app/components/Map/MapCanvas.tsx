@@ -15,6 +15,10 @@ interface VisionState {
   currentStory: string | null;
   currentStep: number;
   showModal: boolean;
+  // Bumped every time the user picks a story from the dropdown so the
+  // step-apply effect re-fires even when the new currentStep matches the
+  // old one (e.g. they re-select the current story while on step 0).
+  sessionId: number;
 }
 
 // Shape of the GeoJSON Feature objects the backend resolver emits for
@@ -41,7 +45,8 @@ export default function MapContainer() {
   const [VisionState, setVisionState] = useState <VisionState>({
     currentStory: null,
     currentStep: 0,
-    showModal: false
+    showModal: false,
+    sessionId: 0,
   });
   const [mapLoaded, setMapLoaded] = useState(false);
   const { loading, error, data: storyData, refetch } = useQuery(GET_STORY_BY_ID, {
@@ -304,12 +309,14 @@ export default function MapContainer() {
   }, []);
 
   // Apply the current step whenever data/step/map-readiness changes.
-  // This covers both "story selected" (step 0) and "Next/Back" transitions.
+  // This covers "story selected" (step 0), "Next/Back" transitions, and
+  // re-selecting the active story (sessionId bump forces a re-fire even
+  // when currentStep is unchanged).
   useEffect(() => {
     if (!mapLoaded || !storyData?.story) return;
     const step = storyData.story.steps[VisionState.currentStep];
     if (step) applyLayerChanges(step);
-  }, [mapLoaded, storyData, VisionState.currentStep, applyLayerChanges]);
+  }, [mapLoaded, storyData, VisionState.currentStep, VisionState.sessionId, applyLayerChanges]);
 
   // Preload the DB-driven icon registry into the map as addImage entries so
   // `icon-image: ['get', 'markerImage']` resolves. Runs when both are ready.
@@ -331,11 +338,12 @@ export default function MapContainer() {
 
   const handleDropdownChange = useCallback((storyId: string) => {
     resetMapState();
-    setVisionState({
+    setVisionState(prev => ({
       currentStory: storyId,
       currentStep: 0,
       showModal: true,
-    });
+      sessionId: prev.sessionId + 1,
+    }));
   }, [resetMapState]);
 
   // Get current modal content + position (position lives on the Modal itself, not content)
