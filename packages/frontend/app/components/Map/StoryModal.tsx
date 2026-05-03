@@ -80,7 +80,7 @@ export default function StoryModal({
                 alt={media.alt ?? content.title}
                 className="w-full rounded-lg shadow-md"
                 onError={(e) => {
-                  console.error('Failed to load image:', media.source);
+                  console.warn('Failed to load image:', media.source);
                   e.currentTarget.style.display = 'none';
                 }}
               />
@@ -90,7 +90,7 @@ export default function StoryModal({
                 controls
                 className="w-full rounded-lg shadow-md"
                 onError={(e) => {
-                  console.error('Failed to load video:', media.source);
+                  console.warn('Failed to load video:', media.source);
                   e.currentTarget.style.display = 'none';
                 }}
               />
