@@ -7,6 +7,7 @@ import { useQuery } from '@apollo/client';
 import { GET_STORY_BY_ID } from '../../lib/queries';
 import Nav from '../Global/Nav';
 import dynamic from 'next/dynamic'
+import Image from 'next/image';
 const Dropdown = dynamic(() => import('../Global/Dropdown'), {ssr: false});
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
@@ -50,7 +51,7 @@ export default function MapContainer() {
       center: [-105.8, 39.5],
       zoom: 6,
       maxBounds: [-129.533,24.132,-66.896,52.180],
-      minZoom: 4,
+      minZoom: 1,
       maxZoom: 10,
     });
 
@@ -81,6 +82,23 @@ export default function MapContainer() {
               map.removeLayer(id);
           }
       })
+      
+      const imageUrl = '/media/pictures/bison-icon.png';
+
+      map.loadImage(imageUrl, (error, image) => {
+        if (error) {
+          console.error(`Failed to load image at path: ${imageUrl}`, error);
+          return;
+        }
+
+        if (image) {
+          if (!map.hasImage('bison-icon')) {
+            map.addImage('bison-icon', image);
+          }
+        } else {
+          console.error(`Image at ${imageUrl} loaded without an error, but the image object is missing.`);
+        }
+      });
 
       map.addSource('dynamic-polygons-source',{
         type:'geojson',
@@ -94,9 +112,22 @@ export default function MapContainer() {
         source: 'dynamic-polygons-source',
         type: 'fill',
         paint: { 
-          'fill-color': '#088',
-          'fill-opacity': 0.5,
-          'fill-outline-color': '#000000', }
+          'fill-color': ['get', 'fillColor'],
+          'fill-opacity': ['get', 'fillOpacity'],
+        }
+      });
+      map.addLayer({
+          id: 'dynamic-polygons-stroke',
+          type: 'line',
+          source: 'dynamic-polygons-source', 
+          paint: {
+              'line-color': [
+                  'get', 'lineColor'
+              ],
+              'line-width': [
+                  'get', 'lineWidth'
+              ]
+          }
       });
 
       map.addSource('dynamic-points-source',{
@@ -107,13 +138,53 @@ export default function MapContainer() {
         },
       });
       map.addLayer({
-        id: 'dynamic-points-layer',
-        source: 'dynamic-points-source',
+        id: 'dynamic-points-circles',
         type: 'circle',
-        paint: { 'circle-color' : '#ff0000', 'circle-radius': 8 }
+        source: 'dynamic-points-source',
+        paint: {
+            'circle-color': ['get', 'color'],
+            'circle-radius': 8,
+        },
+        filter: ['==', ['get', 'renderType'], 'circle']
       });
 
-      map.on('click', 'dynamic-points-layer', (e) => {
+      map.addLayer({
+        id: 'dynamic-points-icons',
+        type: 'symbol',
+        source: 'dynamic-points-source',
+        layout: {
+            'icon-image': 'bison-icon', 
+            'icon-size': 0.1,
+            'icon-allow-overlap': true,
+            'icon-ignore-placement': true
+        },
+        filter: ['==', ['get', 'renderType'], 'image']
+      });
+
+      map.on('click', 'dynamic-points-icons', (e) => {
+       
+      if (!e.features || e.features.length === 0) return;
+    
+      const feature = e.features[0];
+
+      if (!feature.properties || feature.geometry.type !== 'Point') return;
+
+      const coordinates = feature.geometry.coordinates.slice() as [number,number];
+      const name = feature.properties.name || 'Details';
+      const description = feature.properties.description || null;
+      const link = feature.properties.link || null;
+      
+
+      while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+        coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+      }
+
+      new mapboxgl.Popup()
+        .setLngLat(coordinates)
+        .setHTML(`<h3>${name}</h3><p>${description}</p> <p>${link}</p>`)
+        .addTo(map);
+    });
+    map.on('click', 'dynamic-points-circles', (e) => {
        
       if (!e.features || e.features.length === 0) return;
     
@@ -139,12 +210,20 @@ export default function MapContainer() {
 
 
     // Changing the cursor to a pointer when over the points
-    map.on('mouseenter', 'dynamic-points-layer', () => {
+    map.on('mouseenter', 'dynamic-points-icons', () => {
       map.getCanvas().style.cursor = 'pointer';
     });
-    map.on('mouseleave', 'dynamic-points-layer', () => {
+    map.on('mouseenter', 'dynamic-points-circles', () => {
+      map.getCanvas().style.cursor = 'pointer';
+    });
+
+    map.on('mouseleave', 'dynamic-points-icons', () => {
       map.getCanvas().style.cursor = '';
     });
+    map.on('mouseleave', 'dynamic-points-circles', () => {
+      map.getCanvas().style.cursor = '';
+    });
+
 
       Object.values(layerGroups).flat().forEach(({id, sourceId, source, layer}) => {
         if(!map.getSource(sourceId)){
@@ -258,9 +337,7 @@ export default function MapContainer() {
         essential: true, // Prioritize recentering
       });
     }
-  };
-
-  
+  };  
 
   // Hide all layers (reset state)
   const hideAllLayers = () => {
@@ -295,7 +372,7 @@ export default function MapContainer() {
       return {
       title: 'Loading...', 
       content: '', 
-      media: undefined,
+      mediaItems: [],
       canGoBack: false,
       isLastStep: false,
       };
@@ -303,7 +380,7 @@ export default function MapContainer() {
       return {
       title: 'Error', 
       content: 'Could not load story.', 
-      media: undefined,
+      mediaItems: [],
       canGoBack: false,
       isLastStep: false,
       };
@@ -316,10 +393,7 @@ export default function MapContainer() {
     return {
       title: currentStepConfig.title,
       content: currentStepConfig.content,
-      media: {
-        type: currentStepConfig.mediaType,
-        src: currentStepConfig.mediaSrc,
-      },
+      mediaItems: currentStepConfig.mediaItems || [],
       nextButtonText: currentStepConfig.nextButtonText || 'Continue',
       position: currentStepConfig.modalPosition || 'CENTER',
       canGoBack: VisionState.currentStep > 0,
@@ -332,17 +406,20 @@ export default function MapContainer() {
   
   return (
     <div style={{ width: '100%', height: '100%' }}>
+    
     {modalContent && (
       <StoryModal
         isOpen={VisionState.showModal}
           content={modalContent}
           onNext={handleStoryNext}
           onBack={handleStoryBack}
-          onClose={() => setVisionState(prev => ({ ...prev, showModal: false }))}/>
+          onClose={() => setVisionState(prev => ({ ...prev, showModal: false }))}
+          position={modalContent.position}
+      />
     )}
     <Nav>
       <div 
-      style={{ position: 'absolute', top: 10, left: 10, zIndex: 1 }}>
+      style={{ position: 'absolute', top: 35, left: 600, zIndex: 1 }}>
         <Dropdown 
           value ={VisionState.currentStory}
           onChange={handleDropdownChange} 

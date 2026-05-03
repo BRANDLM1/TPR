@@ -74,6 +74,7 @@ type DynamicPointProperties {
   description: String!
   color: String
   markerImage: String
+  renderType: String!
   mediaItems: [MediaItem!]
   link: String
 }

@@ -25,6 +25,7 @@ export default function InitMap() {
             <h1 className="text-7xl font-fell  mb-4">Vision 2035</h1>
             <p className="text-5xl font-lato font-thin mb-12 text-center">The Tipi Raisers invites you to join us in thinking big...</p>
         </FadeIn>
+
         <div className = "text-center">
         <FadeIn delay = {500}>
             <button

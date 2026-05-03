@@ -9,11 +9,11 @@ export default function Nav({ children }: { children?: React.ReactNode }) {
     if (!shopwMap) {
       return(        
         <nav className="fixed border-3 border-black top-0 left-0 z-50 w-full bg-white-100 backdrop-blur shadow-md">
-          <div className = "flex items-center justify-between px-12 py-3">
+          <div className = "flex items-center justify-between px-12 py-1">
             <div className="flex items-center space-x-6">
                 <img src={'./media/pictures/logo.png'} width="75" height="75"/>
             
-            <h1 className="text-5xl font-fell text-black">The Tipi Raisers</h1>
+            <h1 className="text-6xl font-fell text-black">The Tipi Raisers</h1>
             {/* <div className= ' top-30 left-60 text-xl'> */}
             {children}
             {/* </div> */}

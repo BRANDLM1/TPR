@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    // --- Target and Module Settings (This fixes your error) ---
     "target": "ES2022",                // Compile to modern JavaScript
     "module": "NodeNext",             // Use the modern Node.js module system
     "moduleResolution": "NodeNext",   // THIS IS THE CRITICAL FIX

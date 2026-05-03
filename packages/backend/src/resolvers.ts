@@ -16,6 +16,7 @@ function transformPointToGeoJson( dbPoint: (DynamicPoint & { mediaItems?: any[] 
       name: dbPoint.name,
       description: dbPoint.description,
       color: dbPoint.color,
+      renderType: dbPoint.renderType,
       markerImage: dbPoint.markerImage,
       mediaItems: dbPoint.mediaItems,
     },
@@ -27,7 +28,8 @@ export const resolvers = {
     Query: {
         story: async (_parent: any, { id }: { id: string }, context: Context) => {
             console.log(`Fetching story with ID: ${id}`);
-
+            //Log Story ID for debug
+            //Query for associated story data
             const dbStory = await context.prisma.story.findUnique({
                 where: { id: id },
                 include: {
@@ -59,6 +61,7 @@ export const resolvers = {
                     },
                 },
             });
+            //Return story object or null
             return dbStory;
         },
     },
@@ -78,6 +81,7 @@ export const resolvers = {
                 type: 'Feature',
                 geometry: dbPolygon.geometry as any,
                 properties: {
+                    id: dbPolygon.id, 
                     name: dbPolygon.name,
                     fillColor: dbPolygon.fillColor,
                     fillOpacity: dbPolygon.fillOpacity,

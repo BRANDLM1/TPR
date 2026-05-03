@@ -40,6 +40,7 @@ export const GET_STORY_BY_ID = gql`
               caption
             }
             color
+            renderType
             markerImage
             link
           }

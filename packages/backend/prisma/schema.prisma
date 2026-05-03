@@ -55,6 +55,7 @@ model DynamicPoint {
   description           String
   link                  String?
   color                 String?
+  renderType            String          @default("circle") 
   markerImage           String?
   storyStepId           Int
   id                    Int             @id @default(autoincrement())
@@ -68,7 +69,7 @@ model DynamicPolygon {
   fillColor     String
   fillOpacity   Float
   lineColor     String
-  lineWidth     String
+  lineWidth     Float
   storyStepId   Int
   geometry      Json
   id            Int           @id @default(autoincrement())
