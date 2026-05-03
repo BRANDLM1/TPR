@@ -1,13 +1,12 @@
 'use client'
 import {useRef, useEffect, useState, useCallback} from 'react';
 import mapboxgl from 'mapbox-gl';
-import layerGroups from './LayerGroup';
+import layerGroups, { availableLayerIds } from './layerGroup';
 import StoryModal from './StoryModal';
 import { useQuery } from '@apollo/client';
-import { GET_STORY_BY_ID } from '../../lib/queries';
+import { GET_STORY_BY_ID, GET_ICONS } from '../../lib/queries';
 import Nav from '../Global/Nav';
 import dynamic from 'next/dynamic'
-import Image from 'next/image';
 const Dropdown = dynamic(() => import('../Global/Dropdown'), {ssr: false});
 
 mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
@@ -17,11 +16,16 @@ interface VisionState {
   currentStep: number;
   showModal: boolean;
 }
+
+// Shape of the GeoJSON Feature objects the backend resolver emits for
+// dynamic points / polygons. Properties are open since Studio fields may grow.
+type GeoJsonFeature = GeoJSON.Feature<GeoJSON.Geometry, Record<string, unknown>>;
+
 interface StepConfig {
   layersToShow: string[];
   layersToHide: string[];
-  dynamicPoints?: any[];
-  dynamicPolygons?: any[];
+  dynamicPoints?: GeoJsonFeature[];
+  dynamicPolygons?: GeoJsonFeature[];
   zoom?: number;
   pitch?: number;
   bearing?: number;
@@ -39,11 +43,15 @@ export default function MapContainer() {
     currentStep: 0,
     showModal: false
   });
-  const { loading, error, data: storyData } = useQuery(GET_STORY_BY_ID, {
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const { loading, error, data: storyData, refetch } = useQuery(GET_STORY_BY_ID, {
     variables: { id: VisionState.currentStory }, // Pass the selected story ID
     skip: !VisionState.currentStory, // IMPORTANT: Don't run the query until a story is selected
   });
-  
+  const { data: iconsData } = useQuery<{ icons: Array<{ name: string; url: string }> }>(
+    GET_ICONS
+  );
+
   useEffect(() => {
     const map = new mapboxgl.Map({
       container: containerRef.current!,
@@ -61,44 +69,17 @@ export default function MapContainer() {
       console.error('Map error:', e);
     });
 
-    map.on('sourcedataloading', (e) => {
-      console.log('Loading source:', e.sourceId);
-    });
-
-    map.on('sourcedata', (e) => {
-      if (e.isSourceLoaded) {
-        console.log('Source loaded successfully:', e.sourceId);
-      }
-    });
-
-    //Removing initialized state territory layers of streetmap 
+    //Removing initialized state territory layers of streetmap
     map.on('load', () => {
       const layersToHide = [
           'admin-1-boundary',     // US State lines
-          '/admin-1-boundary-bg'   // Background of state lines
+          'admin-1-boundary-bg'   // Background of state lines
       ]
       layersToHide.forEach(id => {
           if (map.getLayer(id)){
               map.removeLayer(id);
           }
       })
-      
-      const imageUrl = '/media/pictures/bison-icon.png';
-
-      map.loadImage(imageUrl, (error, image) => {
-        if (error) {
-          console.error(`Failed to load image at path: ${imageUrl}`, error);
-          return;
-        }
-
-        if (image) {
-          if (!map.hasImage('bison-icon')) {
-            map.addImage('bison-icon', image);
-          }
-        } else {
-          console.error(`Image at ${imageUrl} loaded without an error, but the image object is missing.`);
-        }
-      });
 
       map.addSource('dynamic-polygons-source',{
         type:'geojson',
@@ -108,26 +89,22 @@ export default function MapContainer() {
         },
       });
       map.addLayer({
-        id: 'dynamic-polygons-layer',
+        id: 'dynamic-polygons-fill-layer',
         source: 'dynamic-polygons-source',
         type: 'fill',
-        paint: { 
-          'fill-color': ['get', 'fillColor'],
-          'fill-opacity': ['get', 'fillOpacity'],
-        }
+        paint: {
+          'fill-color': ['coalesce', ['get', 'fillColor'], '#088'],
+          'fill-opacity': ['coalesce', ['get', 'fillOpacity'], 0.5],
+        },
       });
       map.addLayer({
-          id: 'dynamic-polygons-stroke',
-          type: 'line',
-          source: 'dynamic-polygons-source', 
-          paint: {
-              'line-color': [
-                  'get', 'lineColor'
-              ],
-              'line-width': [
-                  'get', 'lineWidth'
-              ]
-          }
+        id: 'dynamic-polygons-line-layer',
+        source: 'dynamic-polygons-source',
+        type: 'line',
+        paint: {
+          'line-color': ['coalesce', ['get', 'lineColor'], '#000000'],
+          'line-width': ['coalesce', ['get', 'lineWidth'], 1],
+        },
       });
 
       map.addSource('dynamic-points-source',{
@@ -137,93 +114,78 @@ export default function MapContainer() {
           features: []
         },
       });
+
+      // Fallback circle: only for points without a loaded icon.
       map.addLayer({
-        id: 'dynamic-points-circles',
+        id: 'dynamic-points-circle-layer',
+        source: 'dynamic-points-source',
         type: 'circle',
-        source: 'dynamic-points-source',
+        filter: ['!', ['has', 'markerImage']],
         paint: {
-            'circle-color': ['get', 'color'],
-            'circle-radius': 8,
-        },
-        filter: ['==', ['get', 'renderType'], 'circle']
+          'circle-color': ['coalesce', ['get', 'color'], '#ff0000'],
+          'circle-radius': 8,
+          'circle-stroke-color': '#ffffff',
+          'circle-stroke-width': 1.5,
+        }
       });
 
+      // Symbol layer: used whenever markerImage is set on the feature.
       map.addLayer({
-        id: 'dynamic-points-icons',
-        type: 'symbol',
+        id: 'dynamic-points-symbol-layer',
         source: 'dynamic-points-source',
+        type: 'symbol',
+        filter: ['has', 'markerImage'],
         layout: {
-            'icon-image': 'bison-icon', 
-            'icon-size': 0.1,
-            'icon-allow-overlap': true,
-            'icon-ignore-placement': true
+          'icon-image': ['get', 'markerImage'],
+          'icon-size': 0.6,
+          'icon-allow-overlap': true,
+          'icon-anchor': 'bottom',
         },
-        filter: ['==', ['get', 'renderType'], 'image']
       });
 
-      map.on('click', 'dynamic-points-icons', (e) => {
-       
-      if (!e.features || e.features.length === 0) return;
-    
-      const feature = e.features[0];
+      const interactivePointLayers = ['dynamic-points-circle-layer', 'dynamic-points-symbol-layer'];
 
-      if (!feature.properties || feature.geometry.type !== 'Point') return;
+      const openPointPopup = (e: mapboxgl.MapMouseEvent & { features?: mapboxgl.MapboxGeoJSONFeature[] }) => {
+        if (!e.features?.length) return;
+        const feature = e.features[0];
+        if (!feature.properties || feature.geometry.type !== 'Point') return;
 
-      const coordinates = feature.geometry.coordinates.slice() as [number,number];
-      const name = feature.properties.name || 'Details';
-      const description = feature.properties.description || null;
-      const link = feature.properties.link || null;
-      
+        const coordinates = (feature.geometry.coordinates as number[]).slice() as [number, number];
+        while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+          coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+        }
 
-      while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
-        coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
-      }
+        // Build the popup body with textContent + anchor element so DB values are never injected as HTML.
+        const container = document.createElement('div');
+        const heading = document.createElement('h3');
+        heading.textContent = feature.properties.name || 'Details';
+        heading.style.margin = '0 0 4px';
+        container.appendChild(heading);
 
-      new mapboxgl.Popup()
-        .setLngLat(coordinates)
-        .setHTML(`<h3>${name}</h3><p>${description}</p> <p>${link}</p>`)
-        .addTo(map);
-    });
-    map.on('click', 'dynamic-points-circles', (e) => {
-       
-      if (!e.features || e.features.length === 0) return;
-    
-      const feature = e.features[0];
+        if (feature.properties.description) {
+          const desc = document.createElement('p');
+          desc.textContent = feature.properties.description;
+          desc.style.margin = '0 0 4px';
+          container.appendChild(desc);
+        }
 
-      if (!feature.properties || feature.geometry.type !== 'Point') return;
+        if (feature.properties.link) {
+          const anchor = document.createElement('a');
+          anchor.href = feature.properties.link;
+          anchor.textContent = 'Learn more';
+          anchor.target = '_blank';
+          anchor.rel = 'noopener noreferrer';
+          container.appendChild(anchor);
+        }
 
-      const coordinates = feature.geometry.coordinates.slice() as [number,number];
-      const name = feature.properties.name || 'Details';
-      const description = feature.properties.description || null;
-      const link = feature.properties.link || null;
-      
+        new mapboxgl.Popup().setLngLat(coordinates).setDOMContent(container).addTo(map);
+      };
 
-      while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
-        coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
-      }
-
-      new mapboxgl.Popup()
-        .setLngLat(coordinates)
-        .setHTML(`<h3>${name}</h3><p>${description}</p> <p>${link}</p>`)
-        .addTo(map);
-    });
-
-
-    // Changing the cursor to a pointer when over the points
-    map.on('mouseenter', 'dynamic-points-icons', () => {
-      map.getCanvas().style.cursor = 'pointer';
-    });
-    map.on('mouseenter', 'dynamic-points-circles', () => {
-      map.getCanvas().style.cursor = 'pointer';
-    });
-
-    map.on('mouseleave', 'dynamic-points-icons', () => {
-      map.getCanvas().style.cursor = '';
-    });
-    map.on('mouseleave', 'dynamic-points-circles', () => {
-      map.getCanvas().style.cursor = '';
-    });
-
+      interactivePointLayers.forEach(layerId => {
+        map.on('click', layerId, openPointPopup);
+        map.on('mouseenter', layerId, () => { map.getCanvas().style.cursor = 'pointer'; });
+        map.on('mouseleave', layerId, () => { map.getCanvas().style.cursor = ''; });
+      });
 
       Object.values(layerGroups).flat().forEach(({id, sourceId, source, layer}) => {
         if(!map.getSource(sourceId)){
@@ -237,76 +199,62 @@ export default function MapContainer() {
           addedLayers.current.add(id);
         }
       });
+
+      setMapLoaded(true);
     });
     return () => map.remove();
   },[]);
 
 
-  // Handle modal "Next" button
+  // Next/Back only update state — an effect below applies the target step's layers.
   const handleStoryNext = useCallback(() => {
-    if (!storyData || !storyData.story) return;
-    
-    const story = storyData.story;
+    if (!storyData?.story) return;
+    const steps = storyData.story.steps;
+    setVisionState(prev => {
+      const next = prev.currentStep + 1;
+      if (next >= steps.length) return { ...prev, showModal: false };
+      return { ...prev, currentStep: next, showModal: true };
+    });
+  }, [storyData]);
 
-    const currentStepConfig = story.steps[VisionState.currentStep];
-    
-    // Apply layer changes when user clicks Next
-    applyLayerChanges(currentStepConfig);
-    
-    // Move to next step or end story
-    const nextStepIndex = VisionState.currentStep + 1;
-    
-    if (nextStepIndex < story.steps.length) {
-      // Continue to next step
-      setVisionState(prev => ({
-        ...prev,
-        currentStep: nextStepIndex,
-        showModal: true // Always show modal for next step
-      }));
-    } else {
-      // End of story
-      setVisionState(prev =>({
-        ...prev,
-        showModal: false,
-      }));
-    }
-  }, [VisionState, storyData]);
-
-  // Handle going back
   const handleStoryBack = useCallback(() => {
-    if (!storyData || !storyData.story || VisionState.currentStep === 0) return;
-    
-    const story = storyData.story;
-    const prevStepIndex = VisionState.currentStep - 1;
-    const prevStepConfig = story.steps[prevStepIndex];
-    
-    // Revert to previous step's layers
-    applyLayerChanges(prevStepConfig);
-    
-    setVisionState(prev => ({
-      ...prev,
-      currentStep: prevStepIndex,
-      showModal: true
-    }));
-  }, [VisionState, storyData]);
+    setVisionState(prev =>
+      prev.currentStep === 0
+        ? prev
+        : { ...prev, currentStep: prev.currentStep - 1, showModal: true }
+    );
+  }, []);
 
   // Apply layer visibility changes
-  const applyLayerChanges = (stepConfig: StepConfig) => {
-      
+  const applyLayerChanges = useCallback((stepConfig: StepConfig) => {
+
     const map = mapRef.current;
     if (!map || !map.isStyleLoaded()) return;
 
-    // Hide specified layers
+    // In dev, warn on layer ids that don't resolve — silent skips make
+    // Studio typos invisible. Prod stays quiet so end-users see no noise.
+    const warnUnknown = (layerId: string, field: 'layersToShow' | 'layersToHide') => {
+      if (process.env.NODE_ENV !== 'production' && !availableLayerIds.includes(layerId)) {
+        console.warn(
+          `[MapCanvas] StoryStep.${field} references unknown layer id "${layerId}". ` +
+          `Valid ids: ${availableLayerIds.join(', ')}`
+        );
+      }
+    };
+
     stepConfig.layersToHide.forEach(layerId => {
       if (map.getLayer(layerId)) {
         map.setLayoutProperty(layerId, 'visibility', 'none');
+      } else {
+        warnUnknown(layerId, 'layersToHide');
       }
     });
-    
-    // Show specified layers  
+
     stepConfig.layersToShow.forEach(layerId => {
       if (map.getLayer(layerId)) {
         map.setLayoutProperty(layerId, 'visibility', 'visible');
+      } else {
+        warnUnknown(layerId, 'layersToShow');
       }
     });
 
@@ -328,7 +276,7 @@ export default function MapContainer() {
       polygonsSource.setData(polygonsData);
     }
 
-    if (stepConfig.latitude && stepConfig.longitude) {
+    if (stepConfig.latitude != null && stepConfig.longitude != null) {
       map.flyTo({
         center: [stepConfig.longitude, stepConfig.latitude],
         zoom: stepConfig.zoom,
@@ -337,92 +285,124 @@ export default function MapContainer() {
         essential: true, // Prioritize recentering
       });
     }
-  };  
+  }, []);
 
-  // Hide all layers (reset state)
-  const hideAllLayers = () => {
+  // Hide every static layer added from layerGroups and clear dynamic sources.
+  const resetMapState = useCallback(() => {
     const map = mapRef.current;
     if (!map || !map.isStyleLoaded()) return;
-    
+
     addedLayers.current.forEach(layerId => {
       if (map.getLayer(layerId)) {
         map.setLayoutProperty(layerId, 'visibility', 'none');
       }
     });
-  };
+
+    const empty = { type: 'FeatureCollection' as const, features: [] };
+    (map.getSource('dynamic-points-source') as mapboxgl.GeoJSONSource | undefined)?.setData(empty);
+    (map.getSource('dynamic-polygons-source') as mapboxgl.GeoJSONSource | undefined)?.setData(empty);
+  }, []);
+
+  // Apply the current step whenever data/step/map-readiness changes.
+  // This covers both "story selected" (step 0) and "Next/Back" transitions.
+  useEffect(() => {
+    if (!mapLoaded || !storyData?.story) return;
+    const step = storyData.story.steps[VisionState.currentStep];
+    if (step) applyLayerChanges(step);
+  }, [mapLoaded, storyData, VisionState.currentStep, applyLayerChanges]);
+
+  // Preload the DB-driven icon registry into the map as addImage entries so
+  // `icon-image: ['get', 'markerImage']` resolves. Runs when both are ready.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!mapLoaded || !map || !iconsData?.icons) return;
+
+    iconsData.icons.forEach(({ name, url }) => {
+      if (map.hasImage(name)) return;
+      map.loadImage(url, (err, image) => {
+        if (err || !image) {
+          console.warn(`Failed to load icon "${name}" from ${url}`, err);
+          return;
+        }
+        if (!map.hasImage(name)) map.addImage(name, image);
+      });
+    });
+  }, [mapLoaded, iconsData]);
 
   const handleDropdownChange = useCallback((storyId: string) => {
-    console.log('[Vision Selected] Starting story:', storyId);
-  
-    // Clear all existing layers first
-    hideAllLayers();
-    
-    // Initialize story
+    resetMapState();
     setVisionState({
       currentStory: storyId,
       currentStep: 0,
       showModal: true,
     });
-  }, []);
+  }, [resetMapState]);
 
-  // Get current modal content
-  const getCurrentModalContent = () => {
-    
-    if (loading) 
+  // Get current modal content + position (position lives on the Modal itself, not content)
+  const getCurrentModalState = () => {
+    if (loading)
       return {
-      title: 'Loading...', 
-      content: '', 
-      mediaItems: [],
-      canGoBack: false,
-      isLastStep: false,
+        content: { title: 'Loading...', content: '', canGoBack: false, isLastStep: false },
+        position: 'CENTER' as const,
+        isErrorState: false,
       };
-    if (error) 
+    if (error)
       return {
-      title: 'Error', 
-      content: 'Could not load story.', 
-      mediaItems: [],
-      canGoBack: false,
-      isLastStep: false,
+        content: {
+          title: "We couldn't load this story",
+          content:
+            'There was a problem reaching the server. Please check your connection and try again.',
+          nextButtonText: 'Retry',
+          canGoBack: false,
+          isLastStep: false,
+        },
+        position: 'CENTER' as const,
+        isErrorState: true,
       };
-  
+
     if (!storyData || !storyData.story || !VisionState.showModal) return null;
 
     const currentStepConfig = storyData.story.steps[VisionState.currentStep];
     if (!currentStepConfig) return null;
 
     return {
-      title: currentStepConfig.title,
-      content: currentStepConfig.content,
-      mediaItems: currentStepConfig.mediaItems || [],
-      nextButtonText: currentStepConfig.nextButtonText || 'Continue',
-      position: currentStepConfig.modalPosition || 'CENTER',
-      canGoBack: VisionState.currentStep > 0,
-      isLastStep: VisionState.currentStep === storyData.story.steps.length - 1
+      content: {
+        title: currentStepConfig.title,
+        content: currentStepConfig.content,
+        mediaItems: currentStepConfig.mediaItems ?? [],
+        nextButtonText: currentStepConfig.nextButtonText || 'Continue',
+        canGoBack: VisionState.currentStep > 0,
+        isLastStep: VisionState.currentStep === storyData.story.steps.length - 1,
+      },
+      position: (currentStepConfig.modalPosition || 'CENTER') as
+        | 'CENTER'
+        | 'TOP_LEFT'
+        | 'TOP_RIGHT'
+        | 'BOTTOM_LEFT'
+        | 'BOTTOM_RIGHT',
+      isErrorState: false,
     };
   };
 
-  // Render logic
-  const modalContent = getCurrentModalContent();
-  
+  const modalState = getCurrentModalState();
+
   return (
     <div style={{ width: '100%', height: '100%' }}>
-    
-    {modalContent && (
+    {modalState && (
       <StoryModal
         isOpen={VisionState.showModal}
-          content={modalContent}
-          onNext={handleStoryNext}
+          content={modalState.content}
+          position={modalState.position}
+          onNext={modalState.isErrorState ? () => refetch() : handleStoryNext}
           onBack={handleStoryBack}
-          onClose={() => setVisionState(prev => ({ ...prev, showModal: false }))}
-          position={modalContent.position}
-      />
+          onClose={() => setVisionState(prev => ({ ...prev, showModal: false }))}/>
     )}
     <Nav>
-      <div 
+      <div
       style={{ position: 'absolute', top: 35, left: 600, zIndex: 1 }}>
-        <Dropdown 
+        <Dropdown
           value ={VisionState.currentStory}
-          onChange={handleDropdownChange} 
+          onChange={handleDropdownChange}
         />
       </div>
     </Nav>

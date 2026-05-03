@@ -101,7 +101,29 @@ type DynamicPolygonProperties {
   centerPoint: GeoJsonPointFeature
 }
 
+type Icon {
+  name: String!
+  url: String!
+}
+
+# Editable copy + URLs surfaced in the nav and landing screen. Singleton on the
+# backend; clients should treat every field as authoritative and not hardcode
+# fallbacks beyond a brief loading state.
+type SiteSettings {
+  organizationName: String!
+  landingTitle: String!
+  landingSubtitle: String!
+  landingCtaText: String!
+  donateUrl: String!
+  donateLabel: String!
+  contactUrl: String!
+  contactLabel: String!
+}
+
 # Fetch story query
 type Query {
   story(id: String!): Story
+  stories: [Story!]!
+  icons: [Icon!]!
+  siteSettings: SiteSettings!
  }

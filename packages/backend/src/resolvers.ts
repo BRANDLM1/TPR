@@ -18,6 +18,7 @@ function transformPointToGeoJson( dbPoint: (DynamicPoint & { mediaItems?: any[] 
       color: dbPoint.color,
       renderType: dbPoint.renderType,
       markerImage: dbPoint.markerImage,
+      link: dbPoint.link,
       mediaItems: dbPoint.mediaItems,
     },
   };
@@ -26,10 +27,26 @@ function transformPointToGeoJson( dbPoint: (DynamicPoint & { mediaItems?: any[] 
 export const resolvers = {
 
     Query: {
+        stories: async (_parent: any, _args: any, context: Context) => {
+            return context.prisma.story.findMany({
+                orderBy: { title: 'asc' },
+            });
+        },
+        icons: async (_parent: any, _args: any, context: Context) => {
+            return context.prisma.icon.findMany({
+                orderBy: { name: 'asc' },
+            });
+        },
+        siteSettings: async (_parent: any, _args: any, context: Context) => {
+            // Singleton row (id = 1). upsert returns defaults on a fresh DB
+            // so a missing seed never breaks the frontend.
+            return context.prisma.siteSettings.upsert({
+                where: { id: 1 },
+                update: {},
+                create: { id: 1 },
+            });
+        },
         story: async (_parent: any, { id }: { id: string }, context: Context) => {
-            console.log(`Fetching story with ID: ${id}`);
-            //Log Story ID for debug
-            //Query for associated story data
             const dbStory = await context.prisma.story.findUnique({
                 where: { id: id },
                 include: {
@@ -44,11 +61,13 @@ export const resolvers = {
                         include: {
                             mediaItems: { orderBy: { order: 'asc' } },
                             dynamicPoints: {
+                                orderBy: { order: 'asc' },
                                 include: {
                                     mediaItems: { orderBy: { order: 'asc' } },
                                 },
                             },
                             dynamicPolygons: {
+                                orderBy: { order: 'asc' },
                                 include: {
                                     centerPoint: {
                                         include: {
@@ -81,7 +100,7 @@ export const resolvers = {
                 type: 'Feature',
                 geometry: dbPolygon.geometry as any,
                 properties: {
-                    id: dbPolygon.id, 
+                    id: dbPolygon.id,
                     name: dbPolygon.name,
                     fillColor: dbPolygon.fillColor,
                     fillOpacity: dbPolygon.fillOpacity,

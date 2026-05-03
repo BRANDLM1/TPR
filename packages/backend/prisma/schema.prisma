@@ -58,6 +58,7 @@ model DynamicPoint {
   renderType            String          @default("circle") 
   markerImage           String?
   storyStepId           Int
+  order                 Int             @default(0)
   id                    Int             @id @default(autoincrement())
   storyStep             StoryStep       @relation(fields: [storyStepId], references: [id])
   centerPointForPolygon DynamicPolygon? @relation("DynamicPointRelation")
@@ -71,6 +72,7 @@ model DynamicPolygon {
   lineColor     String
   lineWidth     Float
   storyStepId   Int
+  order         Int           @default(0)
   geometry      Json
   id            Int           @id @default(autoincrement())
   centerPointId Int?          @unique
@@ -107,4 +109,29 @@ enum ModalPosition {
   TOP_RIGHT
   BOTTOM_LEFT
   BOTTOM_RIGHT
+}
+
+// Studio-editable registry of map marker icons.
+// `name` is the key referenced by DynamicPoint.markerImage.
+// `url` can be either an absolute URL or a path served from /public (e.g. "/icons/tipi.png").
+model Icon {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+  url  String
+}
+
+// Singleton row (id = 1) holding the editable site-wide copy + URLs that
+// staff would otherwise need a developer to change. The frontend reads
+// this once on load and falls back to these defaults if the row is
+// missing or unreachable. Keep exactly one row.
+model SiteSettings {
+  id               Int    @id @default(1)
+  organizationName String @default("The Tipi Raisers")
+  landingTitle     String @default("Vision 2035")
+  landingSubtitle  String @default("The Tipi Raisers invites you to join us in thinking big...")
+  landingCtaText   String @default("Explore Our Campaign")
+  donateUrl        String @default("https://www.thetipiraisers.org/donate.html")
+  donateLabel      String @default("Donate Today!")
+  contactUrl       String @default("https://www.thetipiraisers.org/contact-us.html")
+  contactLabel     String @default("Contact Us")
 }

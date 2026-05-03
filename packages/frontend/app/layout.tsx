@@ -1,43 +1,34 @@
-'use client';
-import { ApolloProvider } from '@apollo/client';
-import { client } from './lib/apollo';
 import { ReactNode } from 'react';
-import { MantineProvider } from '@mantine/core';
-import { ModalsProvider } from '@mantine/modals';
+import type { Metadata } from 'next';
+import { Lato, IM_Fell_English_SC } from 'next/font/google';
 import 'mapbox-gl/dist/mapbox-gl.css';
-
-import {Lato, IM_Fell_English_SC} from "next/font/google";
-import "./globals.css";
 import '@mantine/core/styles.css';
+import './globals.css';
+import Providers from './providers';
 
 const lato = Lato({
-  variable: "--font-lato",
-  subsets: ["latin"],
-  weight: ["100", "400", "700"],
+  variable: '--font-lato',
+  subsets: ['latin'],
+  weight: ['100', '400', '700'],
 });
 
 const fell = IM_Fell_English_SC({
-  variable: "--font-fell",
-  subsets: ["latin"],
-  weight: "400"
+  variable: '--font-fell',
+  subsets: ['latin'],
+  weight: '400',
 });
+
+export const metadata: Metadata = {
+  title: 'The Tipi Raisers — Vision 2035',
+  description:
+    'An interactive map-based exploration of The Tipi Raisers\' Vision 2035 campaign.',
+};
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body className={`${fell.variable} ${lato.variable} antialiased`}>
-        <ApolloProvider client={client}>
-          <MantineProvider 
-              theme={{
-                fontFamily: 'var(--font-lato)',
-                headings: { fontFamily: 'var(--font-fell)' },
-              }}
-          >
-            <ModalsProvider>
-              {children}
-            </ModalsProvider>
-          </MantineProvider>
-        </ApolloProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
