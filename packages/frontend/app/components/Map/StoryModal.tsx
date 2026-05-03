@@ -75,6 +75,7 @@ export default function StoryModal({
           fontSize: '2rem',
           fontWeight: 'bold',
           fontFamily: 'var(--font-fell)',
+          color: 'black',
         },
         content: contentStyle,
       }}
@@ -104,14 +105,14 @@ export default function StoryModal({
               />
             )}
             {media.caption && (
-              <figcaption className="mt-2 text-sm text-gray-600 font-lato">
+              <figcaption className="mt-2 text-sm text-black font-lato">
                 {media.caption}
               </figcaption>
             )}
           </figure>
         ))}
 
-        <div className="mb-8">
+        <div className="mb-8 text-black">
           <p className="text-lg leading-relaxed font-lato">{content.content}</p>
         </div>
 
