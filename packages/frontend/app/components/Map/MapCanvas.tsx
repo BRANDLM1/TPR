@@ -3,6 +3,7 @@ import {useRef, useEffect, useState, useCallback} from 'react';
 import mapboxgl from 'mapbox-gl';
 import layerGroups, { availableLayerIds } from './layerGroup';
 import StoryModal from './StoryModal';
+import MapLegend from './MapLegend';
 import { useQuery } from '@apollo/client';
 import { GET_STORY_BY_ID, GET_ICONS } from '../../lib/queries';
 import Nav from '../Global/Nav';
@@ -408,8 +409,23 @@ export default function MapContainer() {
 
   const modalState = getCurrentModalState();
 
+  const legendPolygons = (
+    storyData?.story?.steps[VisionState.currentStep]?.dynamicPolygons ?? []
+  ).flatMap((f: GeoJsonFeature) => {
+    const p = f.properties;
+    if (!p?.name || !p?.fillColor || !p?.lineColor) return [];
+    return [{
+      id: (p.id as number | string) ?? String(p.name),
+      name: p.name as string,
+      fillColor: p.fillColor as string,
+      fillOpacity: (p.fillOpacity as number) ?? 0.5,
+      lineColor: p.lineColor as string,
+    }];
+  });
+
   return (
     <div style={{ width: '100%', height: '100%' }}>
+    <MapLegend polygons={legendPolygons} />
     {modalState && (
       <StoryModal
         isOpen={VisionState.showModal}
