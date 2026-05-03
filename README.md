@@ -2,16 +2,16 @@
 
 An interactive, narrative-driven mapping application built for [The Tipi Raisers](https://www.thetipiraisers.org/), a 501(c)(3) nonprofit supporting Native communities. The Explorer turns the organization's *Vision 2035* campaign into a guided tour: each initiative is a "story" composed of ordered "steps" that fly the camera around a Mapbox map, surface impact statistics, drop dynamic markers and shaded regions, and play media — all editable from a Prisma Studio UI without touching code.
 
-This README is the operational guide for the staff who will edit content and the developers who will maintain the app.
+This README is the operational guide for the staff and future developers who may edit content and maintain the app.
 
 ---
 
 ## Table of contents
 
 1. [What it does](#1-what-it-does)
-2. [Architecture at a glance](#2-architecture-at-a-glance)
+2. [Architecture](#2-architecture-at-a-glance)
 3. [Tech stack](#3-tech-stack)
-4. [Repository layout](#4-repository-layout)
+4. [Repo layout](#4-repository-layout)
 5. [First-time setup](#5-first-time-setup)
 6. [Running locally](#6-running-locally)
 7. [The data model](#7-the-data-model)
@@ -27,7 +27,7 @@ This README is the operational guide for the staff who will edit content and the
 
 ## 1. What it does
 
-When a visitor lands on the site they see a dark splash screen with the campaign title, a tagline, and an "Explore Our Campaign" call-to-action. (All three pieces of copy are staff-editable — see [Editing content](#8-editing-content-in-prisma-studio).) Clicking the CTA mounts the Mapbox map.
+When a visitor lands on the site they see a dark splash screen with the campaign title, a tagline, and an "Explore Our Campaign" call-to-action. (All three pieces of copy are staff-editable — see [Editing content](#8-editing-content-in-prisma-studio).) Clicking the CTA renders Mapbox map.
 
 A nav bar exposes a story-picker dropdown plus Donate and Contact buttons that link to the main `thetipiraisers.org` site.
 
@@ -44,9 +44,7 @@ While the step is active, the map renders:
 - **Dynamic polygons** — GeoJSON regions with editable fill color/opacity and stroke color/width, optionally anchored to a "center point" marker
 - **Toggleable base layers** — registered in `layerGroup.ts` and shown/hidden by referencing layer IDs in the step's `layersToShow` / `layersToHide` arrays
 
-Stepping forward or back updates the camera, swaps in the next step's points/polygons, and toggles the next step's layers. There is no full-page navigation — the entire experience is a single Mapbox canvas.
-
-If the GraphQL request fails, the modal becomes an error state with a Retry button, and a Next.js error boundary catches any unrecoverable route error.
+Stepping forward or back updates the camera, swaps in the next step's points/polygons, and toggles the next step's layers. There is no full-page navigation — the entire experience is a single Mapbox canvas. If the GraphQL request fails, the modal becomes an error state with a Retry button, and a Next.js error boundary catches any unrecoverable route error.
 
 ## 2. Architecture at a glance
 
@@ -380,7 +378,7 @@ The current plan (per the capstone report) is to host the Explorer alongside `th
 
 **Mapbox usage**
 - Free tier: 50k map renders + 100k vector tile renders / month.
-- The landing splash is intentional: it gates the map mount so a casual visitor doesn't burn a render.
+- The landing splash is intentional, gating the map mount to prevent abuse.
 - Add Mapbox URL restrictions to the production token to prevent token theft.
 
 ## 13. Troubleshooting
@@ -405,12 +403,10 @@ The current plan (per the capstone report) is to host the Explorer alongside `th
 
 Open work, in rough priority order:
 
-1. **Scheduled ETL from Google Sheets.** A Python script (`packages/backend/src/services/etl.py`) is in place but not scheduled. Wire it up to a cron job or Google Cloud Scheduler so impact statistics update without staff touching Studio. Keep its DB role narrowly scoped (write-only on `ImpactStat`).
-2. **Authenticated content for sensitive blog/event material.** A lightweight CAPTCHA on the landing CTA, or a credential-gated section, would harden against scraping bots if the org wants to host less-public material.
-3. **Custom Mapbox tilesets for heavy data viz.** When dense statistical layers (heatmaps, choropleths) become available, register them in `layerGroup.ts` so steps can toggle them. Doing it this way keeps render counts low.
-4. **Backend production build step.** Add `tsc`/`tsup` + a `start` script so production doesn't depend on `ts-node`.
-5. **Automated tests.** None today. Useful starting points: a Jest/Vitest test on the GeoJSON transform in `resolvers.ts`, plus a Playwright smoke test that loads a story and clicks through every step.
-
+1. **Backend production build step.** Add `tsc`/`tsup` + a `start` script so production doesn't depend on `ts-node`.
+2. **Scheduled ETL from Google Sheets.** A Python script (`packages/backend/src/services/etl.py`) is in place but not scheduled. Wire it up to a cron job or Google Cloud Scheduler so impact statistics update without staff touching Studio. Keep its DB role narrowly scoped (write-only on `ImpactStat`).
+3. **Authenticated content for sensitive blog/event material.** A lightweight CAPTCHA on the landing CTA, or a credential-gated section, would harden against scraping bots if the org wants to host less-public material.
+4. **Custom Mapbox tilesets for heavy data viz.** When dense statistical layers (heatmaps, choropleths) become available, register them in `layerGroup.ts` so steps can toggle them. Doing it this way keeps render counts low.
+5. **Automated tests.** None today. Useful starting points: a Jest/Vitest test on the GeoJSON transform in `resolvers.ts`, plus a Playwright test that loads a story and clicks through every step.
 ---
-
-Built during a 10-week internship with The Tipi Raisers. See the accompanying capstone report for design rationale, fieldwork notes, and lessons learned.
+Built during a 10-week internship with The Tipi Raisers.

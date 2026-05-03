@@ -14,7 +14,6 @@
     "outDir": "./dist",               // Where to put the compiled JavaScript files for production builds
     "rootDir": "./src",               // The root directory of your source files
     "sourceMap": true,                // Generate source maps for easier debugging
-    "baseUrl": "."                    // Base directory for module resolution
   },
   "include": [
     "src/**/*"                        // Tells TypeScript to only compile files inside the `src` directory
