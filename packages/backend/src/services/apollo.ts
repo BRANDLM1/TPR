@@ -16,11 +16,14 @@ const server = new ApolloServer<Context>({
 });
 
 async function startServer (){
+// Production hosts (Render/Fly/Railway) inject the port via the PORT env var;
+// fall back to 4000 for local dev where the frontend expects localhost:4000.
+const port = Number(process.env.PORT) || 4000;
 const { url } = await startStandaloneServer(server, {
   context: async () => ({
     prisma: prisma,
   }),
-  listen: { port: 4000 },
+  listen: { port },
 });
 
 console.log(`Server ready at: ${ url }`)

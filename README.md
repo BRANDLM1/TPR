@@ -111,6 +111,7 @@ GeoJSON is **not** stored as a PostGIS geometry. `DynamicPoint` keeps `latitude`
 │   ├── backend/
 │   │   ├── prisma/
 │   │   │   ├── schema.prisma            # source of truth for DB
+│   │   │   ├── seed.js                  # inserts one sample story (npm run db:seed)
 │   │   │   └── migrations/<timestamped>/migration.sql
 │   │   ├── schema.graphql               # GraphQL SDL
 │   │   └── src/
@@ -137,36 +138,51 @@ GeoJSON is **not** stored as a PostGIS geometry. `DynamicPoint` keeps `latitude`
 │                   ├── InitMap.tsx       # landing splash → map mount
 │                   ├── MapCanvas.tsx     # the Mapbox map + step engine
 │                   ├── StoryModal.tsx    # narrative modal
+│                   ├── MapLegend.tsx     # auto legend for the step's polygons
 │                   └── layerGroup.ts     # registry of base-map layers
 ```
 
 ## 5. First-time setup
 
 Prerequisites:
-- Node.js 20+
+- Node.js 20+ (the repo pins **Node 22** via `.nvmrc` — the version it was built and tested on; run `nvm use` to match it)
 - npm 10+
 - A running PostgreSQL 14+ (local Docker, Postgres.app, Supabase, etc.)
 - A Mapbox public access token — create one at https://account.mapbox.com/
 
 ```bash
-# 1. Clone and install all workspaces
+# 1. Match the pinned Node version (recommended)
+nvm use                 # reads .nvmrc → Node 22 (install it first if nvm prompts)
+
+# 2. Clone and install all workspaces
 git clone <repo-url> tpr
 cd tpr
 npm install
 
-# 2. Configure environment
+# 3. Configure environment
 cp .env.example .env.local
 # then edit .env.local — set DATABASE_URL and NEXT_PUBLIC_MAPBOX_TOKEN
 
-# 3. Apply migrations and generate the Prisma client
+# 4. Apply migrations and generate the Prisma client
 npm run db:migrate      # runs prisma migrate dev
 npm run db:generate     # regenerates the Prisma client
 
-# 4. Confirm the DB has a SiteSettings row (id = 1)
+# 5. Seed one sample story so the app has something to show
+npm run db:seed         # inserts a sample story (safe to delete later)
+
+# 6. (optional) Confirm the data in Studio
 npm run db:studio
-# → in Studio, open SiteSettings; the row should already exist from the
-#   migration's INSERT. If it doesn't, add a row with id = 1.
+# → SiteSettings has a row with id = 1; Story has the sample story.
 ```
+
+> **The seed is your proof-of-life.** A fresh database is empty, so without this
+> step the story dropdown is blank and there's no way to tell "broken" from
+> "empty." After `npm run dev`, pick **"Sample Story — Pine Ridge"** from the
+> dropdown: you should fly through three steps — an intro, a highlighted area
+> (which appears in the bottom-left legend), and a clickable marker. That single
+> click-through confirms the whole stack (Postgres → Prisma → GraphQL → map) is
+> wired correctly. Delete or edit the sample story in Studio whenever you're
+> ready to build your own — see [§8](#8-editing-content-in-prisma-studio).
 
 `.env.local` lives at the repo root and is read by **both** workspaces via `dotenv-cli` (see each workspace's `dev` script). The same file holds backend secrets (`DATABASE_URL`) and public frontend values (`NEXT_PUBLIC_*`).
 
@@ -188,13 +204,15 @@ This starts both servers in parallel via `concurrently`:
 
 Other useful root scripts (defined in `package.json`):
 
-- `npm run db:migrate` — `prisma migrate dev`
+- `npm run db:migrate` — `prisma migrate dev` (local development)
+- `npm run db:deploy` — `prisma migrate deploy` (production; applies pending migrations, never resets)
 - `npm run db:generate` — `prisma generate` (run after editing `schema.prisma`)
+- `npm run db:seed` — inserts the sample story (idempotent; re-running won't duplicate it)
 - `npm run db:studio` — opens Prisma Studio
 - `npm run db:pull` — pull schema from the DB (rare; see [Migrations](#11-migrations-and-schema-changes))
 - `npm run build:frontend` / `npm run build:backend`
 
-The backend has no `build` step today — it's run with `ts-node-dev` in development. Production deployment compiles via Next on the frontend and runs the backend through `ts-node` (or you can switch to a precompiled `tsc` step).
+In development the backend runs with `ts-node-dev`. For production it has a real `build` (`tsc` → `packages/backend/dist/`) and `start` (`node dist/services/apollo.js`) script, and the listen port is read from `process.env.PORT` (default 4000) so a host can inject it. See [§12](#12-launching-to-production) for the deploy flow.
 
 ## 7. The data model
 
@@ -242,8 +260,17 @@ Field-level notes for the staff-editable models:
 
 ### `DynamicPolygon`
 - `geometry` — a GeoJSON `Polygon` or `MultiPolygon` JSON object. Easiest authoring path: draw it in [geojson.io](https://geojson.io/) and paste the `geometry` value into the field.
+- `name` — shown in the **map legend** (see below). Give every polygon a clear, human-readable name.
 - `fillColor`, `fillOpacity` (0..1), `lineColor`, `lineWidth` — paint properties.
 - `centerPointId` — optional one-to-one to a `DynamicPoint` that acts as the polygon's label/anchor.
+
+> **The map legend / "map key" builds itself.** There is no legend table to
+> maintain. The bottom-left legend on the map is generated at runtime from the
+> polygons in the *current step*: each one contributes its `name` and a swatch
+> of its `fillColor`/`lineColor`. Add a named polygon to a step and it shows up
+> in the legend automatically; steps with no polygons show no legend. Point
+> markers are intentionally left out of the legend — they're self-describing
+> (click for a popup) and listing every point would crowd the map.
 
 ### `MediaItem`
 - `type` — `IMAGE` or `VIDEO`.
@@ -283,7 +310,7 @@ Recipes:
 
 **Add a marker to a step.** In `DynamicPoint`, add a record pointing at the step's id, set `latitude`/`longitude`/`name`/`description`. Optionally set `color` for the fallback circle, or `markerImage` set to an `Icon.name` to use a custom icon.
 
-**Add a polygon.** Author the GeoJSON in geojson.io, copy just the `"geometry": {...}` value, paste it into `DynamicPolygon.geometry`. Set `fillColor` etc. Optionally point `centerPointId` at a `DynamicPoint` for a label anchor.
+**Add a polygon.** Author the GeoJSON in geojson.io, copy just the `"geometry": {...}` value, paste it into `DynamicPolygon.geometry`. Set a `name` (it appears in the auto-generated map legend) and `fillColor` etc. Optionally point `centerPointId` at a `DynamicPoint` for a label anchor.
 
 **Register a new icon.** In `Icon`, add a row with a unique `name` and a `url`. Then any `DynamicPoint.markerImage = "<name>"` will use it.
 
@@ -405,41 +432,30 @@ After the migration, verify in Prisma Studio (or any SQL client) that the `SiteS
 
 Then have staff open `SiteSettings` in Studio and customize the copy / URLs before launch.
 
-### Step 2 — Add a backend production build + start script
+### Step 2 — Production build is ready; one edit remains (CORS)
 
-The backend currently runs on `ts-node-dev` in development. For production we need a real build step.
+The production build/start path already exists and has been verified end-to-end — you don't need to write it:
 
-**One-time edits**, before the first backend deploy:
+- `npm run build --workspace=backend` compiles to `packages/backend/dist/` (`tsc`).
+- `npm start --workspace=backend` runs `node dist/services/apollo.js`.
+- The listen port reads from `process.env.PORT` (default 4000), so the host can inject it.
+- The server finds `schema.graphql` from the compiled location automatically (no copy step needed).
 
-1. In `packages/backend/package.json`, add scripts:
+**The one thing to do before exposing the backend publicly — tighten CORS.** Apollo's standalone mode allows all origins by default. Restrict it to the frontend's domain in `packages/backend/src/services/apollo.ts`:
 
-   ```json
-   "scripts": {
-     "build": "tsc",
-     "start": "node dist/services/apollo.js",
-     "dev": "dotenv -e ../../.env.local -- ts-node-dev --respawn --transpile-only src/services/apollo.ts"
-   }
-   ```
+```ts
+const { url } = await startStandaloneServer(server, {
+  context: async () => ({ prisma }),
+  listen: { port },
+  // add this — restrict to your production frontend origin(s)
+  cors: { origin: ['https://vision2035.thetipiraisers.org'] },
+});
+```
 
-2. In `packages/backend/src/services/apollo.ts`, make the listen port configurable so the host can inject it:
-
-   ```ts
-   const port = Number(process.env.PORT) || 4000;
-   await startStandaloneServer(server, { listen: { port } });
-   ```
-
-3. The Apollo server reads `../../schema.graphql` relative to the *compiled* file. After `tsc`, that path resolves to `packages/backend/schema.graphql` from `dist/services/`. Verify by running `npm run build && npm start` locally before deploying — if it fails to find the schema, copy `schema.graphql` into `dist/` as part of the build script (e.g. `"build": "tsc && cp schema.graphql dist/"`).
-
-4. **Tighten CORS** before exposing publicly. Apollo standalone mode defaults to allowing all origins; in production, restrict to the frontend's domain:
-
-   ```ts
-   await startStandaloneServer(server, {
-     listen: { port },
-     context: async () => ({ prisma }),
-     // restrict to your frontend
-     cors: { origin: ['https://vision2035.thetipiraisers.org'] },
-   });
-   ```
+> **Do not run `npm run db:seed` against production.** The seed inserts a *sample*
+> story for local proof-of-life. Production content is created by staff in Studio
+> (or migrated from your dev DB). If you do seed it by accident, delete the
+> "Sample Story — Pine Ridge" row in Studio before launch.
 
 ### Step 3 — Deploy the backend
 
@@ -496,7 +512,8 @@ Before flipping DNS, walk through:
 
 - [ ] Production DB is migrated (`prisma migrate deploy` ran cleanly).
 - [ ] `SiteSettings` row exists; staff have edited copy + URLs.
-- [ ] At least one `Story` with at least one `StoryStep` exists, otherwise the dropdown is empty.
+- [ ] At least one real `Story` with at least one `StoryStep` exists, otherwise the dropdown is empty.
+- [ ] The sample seed story is **not** in production (it's for local setup only — delete it if present).
 - [ ] Backend is reachable at the URL set in `NEXT_PUBLIC_GRAPHQL_ENDPOINT`.
 - [ ] Backend CORS allows the frontend's production origin.
 - [ ] Mapbox token has URL restrictions matching the production domain.
