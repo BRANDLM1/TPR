@@ -21,7 +21,6 @@ This README is the operational guide for the staff and future developers who may
 11. [Migrations and schema changes](#11-migrations-and-schema-changes)
 12. [Launching to production](#12-launching-to-production)
 13. [Troubleshooting](#13-troubleshooting)
-14. [Post-launch follow-up](#14-post-launch-follow-up)
 
 ---
 
@@ -98,9 +97,6 @@ GeoJSON is **not** stored as a PostGIS geometry. `DynamicPoint` keeps `latitude`
 - `concurrently` to run frontend + backend in one terminal
 - ESLint + Prettier
 
-**Optional**
-- `packages/backend/src/services/etl.py` — a Python script for pulling Google Sheets impact data into Postgres. Not currently scheduled; see [Future improvements](#14-future-improvements).
-
 ## 4. Repository layout
 
 ```
@@ -119,8 +115,7 @@ GeoJSON is **not** stored as a PostGIS geometry. `DynamicPoint` keeps `latitude`
 │   │       └── services/
 │   │           ├── apollo.ts            # server entrypoint
 │   │           ├── context.ts           # GraphQL context (Prisma)
-│   │           ├── database.ts          # Prisma client instance
-│   │           └── etl.py               # optional Sheets → Postgres ETL
+│   │           └── database.ts          # Prisma client instance
 │   └── frontend/
 │       └── app/
 │           ├── layout.tsx               # server component, Metadata
@@ -538,16 +533,5 @@ Before flipping DNS, walk through:
 
 **Studio shows no `SiteSettings` row.** The migration includes an `INSERT ... ON CONFLICT DO NOTHING`. If your DB pre-dates that migration, add the row manually with `id = 1` — the server's `siteSettings` resolver will also upsert on first read.
 
-## 14. Post-launch follow-up
-
-**Scheduled ETL from Google Sheets.** A Python script lives at `packages/backend/src/services/etl.py` but isn't wired to a scheduler. The Communications team's impact data (food-box deliveries, etc.) is maintained in a Google Sheet today; rather than asking staff to also keep `ImpactStat` rows in Studio in sync, schedule the ETL to pull the sheet into the DB on a cadence.
-
-Setup:
-1. Create a Google Cloud service account with read access to the sheet, download its JSON key, store it somewhere your scheduler can read (do **not** commit it).
-2. Set env vars on whatever host runs the script: `GCP_CREDENTIALS_PATH`, `DATABASE_URL`, `ETL_SHEET_NAME`, `ETL_TABLE_NAME`.
-3. Schedule it: Google Cloud Scheduler → Cloud Run job, or a cron line on whatever VM you already pay for. Daily is plenty.
-4. **Use a third DB role** for the ETL: `INSERT/UPDATE/DELETE` on `ImpactStat` only, no DDL, no access to other tables. Same rationale as the migration/runtime split.
-
-Once this is in place, the Communications team's existing workflow (editing the Sheet) keeps the site current without them ever opening Studio.
 ---
 Built during a 10-week internship with The Tipi Raisers.
