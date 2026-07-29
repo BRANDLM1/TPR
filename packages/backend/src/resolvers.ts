@@ -1,5 +1,42 @@
 import { Context } from "./services/context";
 import { DynamicPoint, DynamicPolygon, StoryStep } from '@prisma/client';
+import { GraphQLScalarType, Kind, ValueNode } from 'graphql';
+
+// Pass-through scalar backing `scalar JSON` in schema.graphql. Polygon
+// coordinates are nested arrays whose depth varies by geometry type
+// (Polygon = 3 levels, MultiPolygon = 4), so they can't be described by a
+// fixed-depth GraphQL list. We hand the value straight through; Mapbox
+// consumes the GeoJSON verbatim.
+//
+// parseLiteral/parseValue exist for completeness — nothing in this schema
+// accepts JSON as input today (there are no mutations), so only serialize
+// is exercised at runtime.
+function parseLiteral(ast: ValueNode): unknown {
+  switch (ast.kind) {
+    case Kind.STRING:
+    case Kind.BOOLEAN:
+      return ast.value;
+    case Kind.INT:
+    case Kind.FLOAT:
+      return parseFloat(ast.value);
+    case Kind.OBJECT:
+      return Object.fromEntries(ast.fields.map(f => [f.name.value, parseLiteral(f.value)]));
+    case Kind.LIST:
+      return ast.values.map(parseLiteral);
+    case Kind.NULL:
+      return null;
+    default:
+      return null;
+  }
+}
+
+const JSONScalar = new GraphQLScalarType({
+  name: 'JSON',
+  description: 'Arbitrary JSON value, passed through without transformation.',
+  serialize: (value) => value,
+  parseValue: (value) => value,
+  parseLiteral,
+});
 
 function transformPointToGeoJson( dbPoint: (DynamicPoint & { mediaItems?: any[] }) | null
 ) {
@@ -25,6 +62,8 @@ function transformPointToGeoJson( dbPoint: (DynamicPoint & { mediaItems?: any[] 
 }
 
 export const resolvers = {
+
+    JSON: JSONScalar,
 
     Query: {
         stories: async (_parent: any, _args: any, context: Context) => {

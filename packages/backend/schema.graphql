@@ -79,9 +79,18 @@ type DynamicPointProperties {
   link: String
 }
 
+# Raw JSON pass-through. Used for polygon coordinates, whose nesting depth
+# depends on the geometry type: a Polygon is [[[Float]]] (3 levels) while a
+# MultiPolygon is [[[[Float]]]] (4). A fixed-depth list type can only ever
+# describe one of them, and the mismatch surfaces as a hard GraphQL error
+# that nulls the field and (with Apollo's default errorPolicy) discards the
+# entire story response. Mapbox consumes the geometry verbatim, so passing
+# it through untouched is both correct and simpler.
+scalar JSON
+
 type PolygonGeometry {
   type: String!
-  coordinates: [[[Float!]!]!]!
+  coordinates: JSON!
 }
 
 type GeoJsonPolygonFeature {
