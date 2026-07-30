@@ -22,7 +22,6 @@ This README is the operational guide for the staff and future developers who may
 12. [Launching to production](#12-launching-to-production)
 13. [Troubleshooting](#13-troubleshooting)
 14. [Known limitations](#14-known-limitations)
-15. [Security & administration notes](#15-security--administration-notes)
 
 ---
 
@@ -331,6 +330,25 @@ Recipes:
 **Show or hide a base layer in a step.** Put the layer's id (e.g. `"roads"`, `"country-boundaries"`) into `StoryStep.layersToShow` or `layersToHide`. The valid IDs come from `packages/frontend/app/components/Map/layerGroup.ts`. Typos log a warning in the browser dev console listing valid IDs.
 
 > **Why some things are *not* in the database.** Mapbox base layers (`layerGroup.ts`) are intentionally code, not DB rows: editing raw Mapbox style-spec JSON in Studio is a poor authoring experience and a single typo would break the whole map. Adding a layer is a developer task — see the next section.
+
+### Visitor controls reference
+
+What a visitor can do while a story is active, and which fields you set in
+Studio to shape it:
+
+| Control | What the visitor sees | What you set |
+| --- | --- | --- |
+| Continue / Back | Buttons at the bottom of the modal | `StoryStep.nextButtonText` overrides the label. Back is hidden automatically on step 1 |
+| Explore (final step) | Replaces Continue on the last step | Automatic, based on `order` — leave the last step's `nextButtonText` blank so "Explore" isn't overridden |
+| Minimize / Resume | The X button or Esc hides the modal so the visitor can pan the map and click markers; a "Resume story (n/m)" pill appears bottom-center to bring it back at the same step | Not something you configure — always available. The only way for a visitor to fully leave a story is picking a different one from the dropdown |
+| Impact panel | A round button bottom-center of the map toggles a card of rotating stats | Appears automatically once the `Story` has at least one `ImpactStat` row. `order` sets rotation sequence; `Story.impactIcon` brands the button with an `Icon` |
+| Marker popup | Click a `DynamicPoint` marker | `name` / `description` / `link` show as text; any `MediaItem` rows attached to the point show as images or video above the text |
+| Map legend | Swatch list, bottom-left of the map | Appears automatically for any *named* `DynamicPolygon` in the current step |
+
+You don't need to think about screen space — the app automatically moves the
+legend, impact panel, and resume pill out of each other's way based on where
+the active step's modal is positioned (`modalPosition`), so nothing you build
+will end up hidden behind something else.
 
 ### Worked example: authoring one Vision 2035 initiative
 
@@ -658,28 +676,6 @@ error modal when `data` is genuinely absent.
 
 **No route back to the landing screen.** Once the map mounts, the splash page
 is gone until the browser is reloaded.
-
-## 15. Security & administration notes
-
-Not about the app's features — this is what whoever administers the GitHub repo, the Google Cloud account, and the dependency tree needs to know.
-
-### A leaked credential was scrubbed from git history — confirm the rotation
-
-Early commits (before this handoff pass) included a Google Cloud service-account key file (`packages/backend/src/services/tipiraisers-*.json`) used by a since-removed ETL script, plus a hardcoded local Postgres password. Both were stripped from **every commit** in the repository's history — not just the current files, the blobs themselves, via `git filter-repo` — and the cleaned history was force-pushed to `main`. A fresh clone of this repo today contains neither.
-
-That fixes the repo. It does **not** by itself fix the credential — anyone who cloned, forked, or downloaded the repo before the scrub still has a copy of the old history with the key in it, and automated secret scanners crawl public GitHub continuously. A key that has ever been public must be treated as compromised regardless of whether the repo is clean now.
-
-**Outstanding action — verify this has been done:** in Google Cloud Console → IAM & Admin → Service Accounts (project `tipiraisers`), delete the service account `bmo-247@tipiraisers.iam.gserviceaccount.com` (or at least delete its key, id starting `dd3857dd…`). Once that account/key is gone, every leaked copy of it — anyone's — stops working. This is the only real fix; do not consider the incident closed until it's done.
-
-**Also delete the local pre-scrub backup.** A full bundle of the repository's history *from before* the scrub was saved to `C:\Users\miles\tpr_prescrub_backup.bundle` as a rollback safety net while rewriting history — which means it still contains the leaked key. Delete that file once the live app is confirmed working and the credential above is rotated.
-
-**If anyone already holds an older clone**, the history rewrite changed every commit hash after the scrub point. Their local `main` has diverged permanently from `origin/main` — `git pull` will not resolve cleanly or will silently reintroduce the old (leaking) history. The fix is to re-clone fresh, not to merge or rebase.
-
-### Dependency security
-
-`npm audit` was brought from 17 findings (1 critical, 5 high, 10 moderate, 1 low) down to 2 moderate by bumping `next` (15.3.4 → 15.5.19), `eslint-config-next` (kept in lockstep with `next`), and `@apollo/server` (^5.0.0 → ^5.5.1) — all within their existing major versions, no breaking changes. The 2 remaining moderate findings are in a copy of `postcss` bundled *inside* `next`'s own build tooling (the project's own top-level `postcss` is already on a patched version); they aren't reachable through this app, since `next` only stringifies this project's own CSS at build time, and npm's only offered fix is downgrading `next` to version 9, which would be a regression, not a fix. Expect them to clear on a future `next` patch release.
-
-Run `npm audit` periodically going forward — new CVEs get disclosed against already-installed versions over time; this isn't a one-time task done at handoff.
 
 ---
 Built during a 10-week internship with The Tipi Raisers.
