@@ -23,6 +23,9 @@ type MediaItem {
 type Story {
   id: ID!
   title: String!
+  # Icon registry name (Icon.name) for the floating impact button.
+  # Null → the frontend falls back to a generic chart glyph.
+  impactIcon: String
   steps: [StoryStep!]!
   impactStats: [ImpactStat!]
 }

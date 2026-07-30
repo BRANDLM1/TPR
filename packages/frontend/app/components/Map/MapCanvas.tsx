@@ -4,6 +4,8 @@ import mapboxgl from 'mapbox-gl';
 import layerGroups, { availableLayerIds } from './layerGroup';
 import StoryModal from './StoryModal';
 import MapLegend from './MapLegend';
+import ImpactPanel from './ImpactPanel';
+import type { ImpactStatItem } from './ImpactPanel';
 import { useQuery } from '@apollo/client';
 import { GET_STORY_BY_ID, GET_ICONS } from '../../lib/queries';
 import Nav from '../Global/Nav';
@@ -165,36 +167,106 @@ export default function MapContainer() {
         if (!e.features?.length) return;
         const feature = e.features[0];
         if (!feature.properties || feature.geometry.type !== 'Point') return;
+        // Narrowed copy — TS can't carry the null-check above into the
+        // media forEach closure below.
+        const props = feature.properties;
 
         const coordinates = (feature.geometry.coordinates as number[]).slice() as [number, number];
         while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
           coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
         }
 
-        // Build the popup body with textContent + anchor element so DB values are never injected as HTML.
+        // Build the popup body with textContent + element creation so DB
+        // values are never injected as HTML. Media sources only ever land in
+        // src attributes, which browsers treat as URLs, not markup.
         const container = document.createElement('div');
+        container.style.maxWidth = '300px';
+        container.style.maxHeight = '320px';
+        container.style.overflowY = 'auto';
+
         const heading = document.createElement('h3');
-        heading.textContent = feature.properties.name || 'Details';
+        heading.textContent = props.name || 'Details';
         heading.style.margin = '0 0 4px';
         container.appendChild(heading);
 
-        if (feature.properties.description) {
+        // Media attached to the point (images/videos). Mapbox GL serializes
+        // nested feature properties to JSON strings when features come back
+        // from an event, so mediaItems arrives as a string here and has to
+        // be parsed back into an array.
+        type PopupMedia = {
+          order?: number;
+          type?: string;
+          source?: string;
+          alt?: string | null;
+          caption?: string | null;
+        };
+        let popupMedia: PopupMedia[] = [];
+        const rawMedia: unknown = props.mediaItems;
+        if (Array.isArray(rawMedia)) {
+          popupMedia = rawMedia as PopupMedia[];
+        } else if (typeof rawMedia === 'string') {
+          try {
+            const parsed = JSON.parse(rawMedia);
+            if (Array.isArray(parsed)) popupMedia = parsed;
+          } catch {
+            /* malformed JSON in properties — skip media, keep the text popup */
+          }
+        }
+        popupMedia
+          .filter((m) => m && typeof m.source === 'string' && m.source)
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+          .forEach((m) => {
+            const fig = document.createElement('figure');
+            fig.style.margin = '6px 0';
+            if ((m.type || '').toUpperCase() === 'VIDEO') {
+              const video = document.createElement('video');
+              video.src = m.source!;
+              video.controls = true;
+              video.preload = 'metadata';
+              video.style.width = '100%';
+              video.style.borderRadius = '6px';
+              video.onerror = () => { fig.style.display = 'none'; };
+              fig.appendChild(video);
+            } else {
+              const img = document.createElement('img');
+              img.src = m.source!;
+              img.alt = m.alt || props.name || '';
+              img.style.width = '100%';
+              img.style.borderRadius = '6px';
+              img.onerror = () => { fig.style.display = 'none'; };
+              fig.appendChild(img);
+            }
+            if (m.caption) {
+              const cap = document.createElement('figcaption');
+              cap.textContent = m.caption;
+              cap.style.fontSize = '12px';
+              cap.style.color = '#555';
+              cap.style.marginTop = '2px';
+              fig.appendChild(cap);
+            }
+            container.appendChild(fig);
+          });
+
+        if (props.description) {
           const desc = document.createElement('p');
-          desc.textContent = feature.properties.description;
+          desc.textContent = props.description;
           desc.style.margin = '0 0 4px';
           container.appendChild(desc);
         }
 
-        if (feature.properties.link) {
+        if (props.link) {
           const anchor = document.createElement('a');
-          anchor.href = feature.properties.link;
+          anchor.href = props.link;
           anchor.textContent = 'Learn more';
           anchor.target = '_blank';
           anchor.rel = 'noopener noreferrer';
           container.appendChild(anchor);
         }
 
-        new mapboxgl.Popup().setLngLat(coordinates).setDOMContent(container).addTo(map);
+        new mapboxgl.Popup({ maxWidth: '340px' })
+          .setLngLat(coordinates)
+          .setDOMContent(container)
+          .addTo(map);
       };
 
       interactivePointLayers.forEach(layerId => {
@@ -432,14 +504,60 @@ export default function MapContainer() {
   const legendAlign =
     VisionState.showModal && modalState?.position === 'BOTTOM_LEFT' ? 'right' : 'left';
 
+  const steps = storyData?.story?.steps ?? [];
+  const impactStats: ImpactStatItem[] = storyData?.story?.impactStats ?? [];
+  // Resolve the initiative's impact icon against the already-fetched Icon
+  // registry (same registry the map markers use). Null → chart-glyph fallback.
+  const impactIconUrl = storyData?.story?.impactIcon
+    ? iconsData?.icons.find((i) => i.name === storyData.story.impactIcon)?.url ?? null
+    : null;
+  // The story stays active while its modal is hidden (X / Esc minimizes, and
+  // finishing the last step also hides it) — this pill is the way back in.
+  const canResume = Boolean(
+    storyData?.story && steps.length > 0 && !VisionState.showModal && !loading && !error
+  );
+
   return (
     <div style={{ width: '100%', height: '100%' }}>
     <MapLegend polygons={legendPolygons} align={legendAlign} />
+
+    {/* Bottom-center chrome, kept clear of the legend (bottom corners), the
+        Mapbox attribution (bottom-right), and the corner modals. The wrapper
+        ignores pointer events so the map stays pannable around the buttons.
+        Centered with flex on a full-width bar, NOT translate-x: a transform
+        here would become the containing block for the impact card's
+        position:fixed, breaking its viewport-relative left/right anchoring. */}
+    <div className="fixed bottom-6 inset-x-0 z-10 flex justify-center items-center gap-3 pointer-events-none">
+      {impactStats.length > 0 && (
+        <ImpactPanel
+          stats={impactStats}
+          iconUrl={impactIconUrl}
+          initiative={storyData.story.title}
+          panelSide={
+            VisionState.showModal && modalState?.position === 'BOTTOM_LEFT'
+              ? 'right'
+              : VisionState.showModal && modalState?.position === 'BOTTOM_RIGHT'
+                ? 'left'
+                : 'center'
+          }
+        />
+      )}
+      {canResume && (
+        <button
+          onClick={() => setVisionState(prev => ({ ...prev, showModal: true }))}
+          className="pointer-events-auto bg-amber-300 hover:bg-amber-400 text-black font-lato font-bold px-5 py-3 rounded-full shadow-md transition-transform hover:scale-105"
+        >
+          Resume story ({VisionState.currentStep + 1}/{steps.length})
+        </button>
+      )}
+    </div>
+
     {modalState && (
       <StoryModal
         isOpen={VisionState.showModal}
           content={modalState.content}
           position={modalState.position}
+          canMinimize={!modalState.isErrorState && !loading}
           onNext={modalState.isErrorState ? () => refetch() : handleStoryNext}
           onBack={handleStoryBack}
           onClose={() => setVisionState(prev => ({ ...prev, showModal: false }))}/>

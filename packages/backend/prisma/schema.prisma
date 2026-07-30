@@ -10,6 +10,10 @@ datasource db {
 model Story {
   id          String       @id @default(cuid())
   title       String
+  // Optional Icon registry name (Icon.name) shown on the floating impact
+  // button for this initiative — e.g. "bison" or "lightbulb". Falls back
+  // to a generic chart glyph when null or when the icon fails to load.
+  impactIcon  String?
   impactStats ImpactStat[]
   steps       StoryStep[]
 }

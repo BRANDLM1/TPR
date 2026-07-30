@@ -40,9 +40,13 @@ Selecting a story opens a modal positioned anywhere from CENTER to one of the fo
 
 While the step is active, the map renders:
 
-- **Dynamic points** — geocoded markers with a custom color or icon (looked up against an Icon registry), clickable popups, and optional `link` text
+- **Dynamic points** — geocoded markers with a custom color or icon (looked up against an Icon registry), clickable popups that show the point's text **and any attached images/videos**, and optional `link` text
 - **Dynamic polygons** — GeoJSON regions with editable fill color/opacity and stroke color/width, optionally anchored to a "center point" marker
 - **Toggleable base layers** — registered in `layerGroup.ts` and shown/hidden by referencing layer IDs in the step's `layersToShow` / `layersToHide` arrays
+
+The story modal can be **minimized** (X button or Esc): the map stays fully interactive while a "Resume story" pill at the bottom of the screen brings the modal back at the same step. The only way to fully leave a story is picking another one from the dropdown.
+
+If the story has `ImpactStat` rows, a **round impact button** (bottom-center, using the initiative's `impactIcon` from the Icon registry, or a chart glyph) toggles a compact card of rotating statistics — auto-cycling every few seconds, with manual arrows and dots, pausing on hover.
 
 Stepping forward or back updates the camera, swaps in the next step's points/polygons, and toggles the next step's layers. There is no full-page navigation — the entire experience is a single Mapbox canvas. If the GraphQL request fails, the modal becomes an error state with a Retry button, and a Next.js error boundary catches any unrecoverable route error.
 
@@ -233,7 +237,17 @@ Field-level notes for the staff-editable models:
 ### `Story`
 - `id` — cuid; staff usually don't edit this.
 - `title` — appears in the story dropdown.
+- `impactIcon` — optional `Icon.name` from the Icon registry; shown on the round impact button for this initiative (e.g. a bison for the Bison project). Null → generic chart glyph.
 - `impactStats[]`, `steps[]` — the chapters.
+
+### `ImpactStat`
+Displayed in the rotating **impact panel** — the round button at the bottom-center of the map (visible whenever the selected story has at least one stat).
+- `order` — rotation order, ascending (10, 20, 30…).
+- `title` — the label under the number (e.g. "Families served").
+- `statistic` — integer; rendered large with thousands separators.
+- `content` — optional supporting sentence (a recent achievement, context, timeframe).
+- `link` — optional; renders a "Learn more" link.
+- `mediaItems[]` — optional; the first image renders above the number.
 
 ### `StoryStep`
 - `order` — integer; steps are sorted ascending. Use 10, 20, 30 to leave room to insert.
@@ -250,6 +264,7 @@ Field-level notes for the staff-editable models:
 - `latitude`, `longitude` — required floats.
 - `name`, `description` — appear in the click popup. **Plain text only** — both are inserted via DOM `textContent`, so HTML in the field is rendered as literal text (anti-XSS).
 - `link` — optional URL; renders a "Learn more" anchor in the popup.
+- `mediaItems[]` — images/videos attached to the point render inside its click popup (above the description, in `order`).
 - `color` — hex string (e.g. `#ff8800`). Used for the fallback circle marker.
 - `markerImage` — name of an entry in the `Icon` table. If set and the icon loads, the point renders as a custom symbol; if absent, the colored circle fallback is used.
 - `order` — for stable draw order when staff care.
@@ -304,7 +319,9 @@ Recipes:
 1. Upload the image to wherever the org hosts media (or drop it in `packages/frontend/public/media/...` if a developer is involved).
 2. In `MediaItem`, add a record with `storyStepId` set, `type = IMAGE`, `source = <url>`, `alt = "..."`, `order` ascending.
 
-**Add a marker to a step.** In `DynamicPoint`, add a record pointing at the step's id, set `latitude`/`longitude`/`name`/`description`. Optionally set `color` for the fallback circle, or `markerImage` set to an `Icon.name` to use a custom icon.
+**Add a marker to a step.** In `DynamicPoint`, add a record pointing at the step's id, set `latitude`/`longitude`/`name`/`description`. Optionally set `color` for the fallback circle, or `markerImage` set to an `Icon.name` to use a custom icon. To show photos or video in the marker's popup, add `MediaItem` rows with `dynamicPointId` set to the point's id.
+
+**Add rotating impact stats to an initiative.** In `ImpactStat`, add rows with `storyId` set — `order` (10, 20, 30…), `title`, `statistic` (whole number), optional `content`/`link`. The round impact button appears at the bottom of the map whenever the selected story has at least one stat. To brand the button, set `Story.impactIcon` to an `Icon.name` from the registry (e.g. a bison PNG for the Bison initiative).
 
 **Add a polygon.** Author the GeoJSON in geojson.io, copy just the `"geometry": {...}` value, paste it into `DynamicPolygon.geometry`. Set a `name` (it appears in the auto-generated map legend) and `fillColor` etc. Optionally point `centerPointId` at a `DynamicPoint` for a label anchor.
 
@@ -602,24 +619,22 @@ records yet. A story with zero steps is valid in the database and the API
 returns it happily, but there is nothing for the app to display, so the map
 just sits there. Add at least one step.
 
+**The impact button doesn't appear.** The selected story has no `ImpactStat`
+rows — the button only renders when there is at least one stat to show.
+
+**The impact button shows a chart glyph instead of the initiative's icon.**
+`Story.impactIcon` is empty, doesn't match any `Icon.name` in the registry, or
+the icon's `url` doesn't load. The glyph is the designed fallback, not an error.
+
+**The story modal disappeared and I can't get it back.** It was minimized (X
+or Esc). Click the "Resume story" pill at the bottom-center of the map — the
+story reopens at the same step. Selecting the story again from the dropdown
+restarts it from step 1 instead.
+
 ## 14. Known limitations
 
 Things a future developer should know are *deliberately* incomplete, so nobody
 loses a day discovering them the hard way. None of these break the app.
-
-**`ImpactStat` is stored and served but never displayed.** The model exists,
-the `story` query fetches it, and the resolver returns it — but no component
-renders it, so filling in `ImpactStat` rows in Studio has no visible effect
-today. This is the natural home for the "progress / impact numbers" side of
-Vision 2035 and is the single biggest feature still on the table. Implementing
-it means building a component (a stats panel or an impact step) and reading
-`storyData.story.impactStats`, which already arrives with its media attached.
-
-**Marker popups show text only.** `DynamicPoint` supports `mediaItems` and the
-query fetches them, but the popup built in `MapCanvas.tsx` (`openPointPopup`)
-renders only name, description, and an optional link. Images or videos attached
-to a *point* will not appear. Media attached to a **step** does render, in the
-modal.
 
 **`DynamicPoint.renderType` is unused.** It's in the schema and the query, but
 the map decides between an icon and a circle purely by whether `markerImage`

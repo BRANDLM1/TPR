@@ -48,9 +48,10 @@ async function main() {
     update: {},
     create: {
       name: 'tipi',
-      // Replace with the org's own hosted PNG. A '/'-prefixed path served from
-      // packages/frontend/public also works (e.g. "/icons/tipi.png").
-      url: 'https://upload.wikimedia.org/wikipedia/commons/3/3a/Tipi.png',
+      // '/'-prefixed paths are served from packages/frontend/public. Using
+      // the org logo that ships with the repo keeps the demo self-contained
+      // (no external URL to rot). Swap for any hosted PNG when you have one.
+      url: '/media/pictures/logo.png',
     },
   });
 
@@ -71,6 +72,34 @@ async function main() {
   const story = await prisma.story.create({
     data: {
       title: SAMPLE_TITLE,
+      // Icon-registry name for the floating impact button (bottom-center of
+      // the map). Falls back to a chart glyph if unset or if the icon 404s.
+      impactIcon: 'tipi',
+      // Rotating stats shown in the impact panel. Sample numbers — replace
+      // with the initiative's real figures, or delete the rows.
+      impactStats: {
+        create: [
+          {
+            order: 10,
+            title: 'Families served (sample)',
+            statistic: 1250,
+            content: 'Replace these rows in the ImpactStat table with the initiative’s real numbers.',
+            link: 'https://www.thetipiraisers.org/',
+          },
+          {
+            order: 20,
+            title: 'Cords of firewood delivered (sample)',
+            statistic: 340,
+            content: 'Stats rotate automatically every few seconds; visitors can also flip through them.',
+          },
+          {
+            order: 30,
+            title: 'Bison returned to tribal lands (sample)',
+            statistic: 82,
+            content: 'The panel is opened from the round icon button at the bottom of the map.',
+          },
+        ],
+      },
       steps: {
         create: [
           // --- Step 1: text-only intro, centered modal, wide camera ---
@@ -172,6 +201,20 @@ async function main() {
                   // the icon image fails to load.
                   color: '#c0392b',
                   order: 0,
+                  // Media attached to a point renders inside its click popup
+                  // (images above the description, in `order`).
+                  mediaItems: {
+                    create: [
+                      {
+                        order: 10,
+                        type: 'IMAGE',
+                        // Served from packages/frontend/public — self-contained demo.
+                        source: '/media/pictures/logo.png',
+                        alt: 'The Tipi Raisers logo',
+                        caption: 'Point media renders in the popup like this.',
+                      },
+                    ],
+                  },
                 },
               ],
             },

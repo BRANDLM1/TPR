@@ -28,6 +28,11 @@ interface StoryModalProps {
     isLastStep: boolean;
   } | null;
   position?: ModalPosition;
+  // When true (normal steps) the X button and Esc hide the modal so the
+  // visitor can interact with the map; the story itself stays active and a
+  // "Resume story" pill appears at the bottom of the map. False for the
+  // loading / error states, which shouldn't be dismissible.
+  canMinimize?: boolean;
   onNext: () => void;
   onBack: () => void;
   onClose: () => void;
@@ -46,6 +51,7 @@ export default function StoryModal({
   isOpen,
   content,
   position = 'CENTER',
+  canMinimize = true,
   onNext,
   onBack,
   onClose,
@@ -62,14 +68,17 @@ export default function StoryModal({
       size="lg"
       centered={position === 'CENTER'}
       withOverlay={position === 'CENTER'}
-      // Lock the user into the story sequence: no X button, no Esc,
-      // no click-outside dismiss. The only ways out are Next/Back
-      // through the steps, the final-step "Explore" button (which
-      // hands them the map), or picking a different story from the
-      // dropdown (which resets state).
-      withCloseButton={false}
-      closeOnEscape={false}
+      // The X button and Esc *minimize* rather than exit: they hide the
+      // modal so the visitor can pan the map and click markers, while the
+      // story (and its current step) stays active — MapCanvas shows a
+      // "Resume story" pill to bring the modal back. The only way to fully
+      // leave a story is picking another one from the dropdown.
+      // Click-outside stays disabled so panning the map next to a corner
+      // modal doesn't hide it by accident.
+      withCloseButton={canMinimize}
+      closeOnEscape={canMinimize}
       closeOnClickOutside={false}
+      closeButtonProps={{ 'aria-label': 'Hide story panel and explore the map' }}
       styles={{
         title: {
           fontSize: '2rem',

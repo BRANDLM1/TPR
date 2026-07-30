@@ -49,6 +49,7 @@ export const GET_STORY_BY_ID = gql`
     story(id: $id) {
       id
       title
+      impactIcon
       steps {
         id
         order
