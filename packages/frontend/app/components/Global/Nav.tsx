@@ -7,14 +7,23 @@ export default function Nav({ children }: { children?: React.ReactNode }) {
 
   return (
     <nav className="fixed border-3 border-black top-0 left-0 z-50 w-full bg-white-100 backdrop-blur shadow-md">
-      <div className="flex items-center justify-between px-12 py-3">
-        <div className="flex items-center space-x-6">
-          <img src="/media/pictures/logo.png" width="75" height="75" alt={settings.organizationName} />
-          <h1 className="text-5xl font-fell text-black">{settings.organizationName}</h1>
+      {/* min-w-0 + truncate let the org name give up space first, so the
+          story dropdown and the Donate/Contact buttons never collide on
+          narrower windows. gap-8 keeps them from touching. */}
+      <div className="flex items-center justify-between gap-8 px-12 py-3">
+        <div className="flex items-center space-x-6 min-w-0">
+          <img
+            src="/media/pictures/logo.png"
+            width="75"
+            height="75"
+            alt={settings.organizationName}
+            className="shrink-0"
+          />
+          <h1 className="text-5xl font-fell text-black truncate">{settings.organizationName}</h1>
           {children}
         </div>
 
-        <div className="flex space-x-4">
+        <div className="flex space-x-4 shrink-0">
           <a
             href={settings.donateUrl}
             target="_blank"

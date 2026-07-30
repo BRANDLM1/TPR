@@ -393,7 +393,11 @@ export default function MapContainer() {
         title: currentStepConfig.title,
         content: currentStepConfig.content,
         mediaItems: currentStepConfig.mediaItems ?? [],
-        nextButtonText: currentStepConfig.nextButtonText || 'Continue',
+        // Pass through as-is. Defaulting to 'Continue' here would make it
+        // always truthy and shadow StoryModal's own fallback, which shows
+        // "Explore" on the final step to signal the story is handing the
+        // map over.
+        nextButtonText: currentStepConfig.nextButtonText ?? undefined,
         canGoBack: VisionState.currentStep > 0,
         isLastStep: VisionState.currentStep === storyData.story.steps.length - 1,
       },
@@ -423,9 +427,14 @@ export default function MapContainer() {
     }];
   });
 
+  // A BOTTOM_LEFT modal covers the legend's default corner entirely, so send
+  // the legend to the opposite corner while such a step is showing.
+  const legendAlign =
+    VisionState.showModal && modalState?.position === 'BOTTOM_LEFT' ? 'right' : 'left';
+
   return (
     <div style={{ width: '100%', height: '100%' }}>
-    <MapLegend polygons={legendPolygons} />
+    <MapLegend polygons={legendPolygons} align={legendAlign} />
     {modalState && (
       <StoryModal
         isOpen={VisionState.showModal}
@@ -436,8 +445,11 @@ export default function MapContainer() {
           onClose={() => setVisionState(prev => ({ ...prev, showModal: false }))}/>
     )}
     <Nav>
-      <div
-      style={{ position: 'absolute', top: 35, left: 600, zIndex: 1 }}>
+      {/* Flows inside the nav's left-hand flex row rather than being pinned
+          at an absolute left offset. A fixed offset collided with the
+          right-aligned Donate/Contact buttons on any window narrower than
+          ~1190px (an unmaximized window or a smaller laptop). */}
+      <div style={{ minWidth: 200, maxWidth: 260, flex: '0 1 auto', zIndex: 1 }}>
         <Dropdown
           value ={VisionState.currentStory}
           onChange={handleDropdownChange}

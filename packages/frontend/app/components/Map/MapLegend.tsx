@@ -14,12 +14,23 @@ interface LegendPolygon {
   lineColor: string;
 }
 
-export default function MapLegend({ polygons }: { polygons: LegendPolygon[] }) {
+export default function MapLegend({
+  polygons,
+  align = 'left',
+}: {
+  polygons: LegendPolygon[];
+  // Which bottom corner to sit in. A step whose modal is positioned
+  // BOTTOM_LEFT would otherwise sit directly on top of the legend and hide
+  // it completely, so the caller flips the legend to the right in that case.
+  align?: 'left' | 'right';
+}) {
   if (!polygons || polygons.length === 0) return null;
 
   return (
     <aside
-      className="fixed bottom-6 left-6 z-10 bg-white/95 backdrop-blur rounded-lg shadow-md px-4 py-3 max-w-xs pointer-events-none"
+      className={`fixed bottom-6 ${
+        align === 'right' ? 'right-6' : 'left-6'
+      } z-10 bg-white/95 backdrop-blur rounded-lg shadow-md px-4 py-3 max-w-xs pointer-events-none`}
       aria-label="Map legend"
     >
       <h4 className="font-fell text-base text-black mb-2">Legend</h4>
