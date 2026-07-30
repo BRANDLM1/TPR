@@ -22,6 +22,7 @@ This README is the operational guide for the staff and future developers who may
 12. [Launching to production](#12-launching-to-production)
 13. [Troubleshooting](#13-troubleshooting)
 14. [Known limitations](#14-known-limitations)
+15. [Security & administration notes](#15-security--administration-notes)
 
 ---
 
@@ -657,6 +658,28 @@ error modal when `data` is genuinely absent.
 
 **No route back to the landing screen.** Once the map mounts, the splash page
 is gone until the browser is reloaded.
+
+## 15. Security & administration notes
+
+Not about the app's features — this is what whoever administers the GitHub repo, the Google Cloud account, and the dependency tree needs to know.
+
+### A leaked credential was scrubbed from git history — confirm the rotation
+
+Early commits (before this handoff pass) included a Google Cloud service-account key file (`packages/backend/src/services/tipiraisers-*.json`) used by a since-removed ETL script, plus a hardcoded local Postgres password. Both were stripped from **every commit** in the repository's history — not just the current files, the blobs themselves, via `git filter-repo` — and the cleaned history was force-pushed to `main`. A fresh clone of this repo today contains neither.
+
+That fixes the repo. It does **not** by itself fix the credential — anyone who cloned, forked, or downloaded the repo before the scrub still has a copy of the old history with the key in it, and automated secret scanners crawl public GitHub continuously. A key that has ever been public must be treated as compromised regardless of whether the repo is clean now.
+
+**Outstanding action — verify this has been done:** in Google Cloud Console → IAM & Admin → Service Accounts (project `tipiraisers`), delete the service account `bmo-247@tipiraisers.iam.gserviceaccount.com` (or at least delete its key, id starting `dd3857dd…`). Once that account/key is gone, every leaked copy of it — anyone's — stops working. This is the only real fix; do not consider the incident closed until it's done.
+
+**Also delete the local pre-scrub backup.** A full bundle of the repository's history *from before* the scrub was saved to `C:\Users\miles\tpr_prescrub_backup.bundle` as a rollback safety net while rewriting history — which means it still contains the leaked key. Delete that file once the live app is confirmed working and the credential above is rotated.
+
+**If anyone already holds an older clone**, the history rewrite changed every commit hash after the scrub point. Their local `main` has diverged permanently from `origin/main` — `git pull` will not resolve cleanly or will silently reintroduce the old (leaking) history. The fix is to re-clone fresh, not to merge or rebase.
+
+### Dependency security
+
+`npm audit` was brought from 17 findings (1 critical, 5 high, 10 moderate, 1 low) down to 2 moderate by bumping `next` (15.3.4 → 15.5.19), `eslint-config-next` (kept in lockstep with `next`), and `@apollo/server` (^5.0.0 → ^5.5.1) — all within their existing major versions, no breaking changes. The 2 remaining moderate findings are in a copy of `postcss` bundled *inside* `next`'s own build tooling (the project's own top-level `postcss` is already on a patched version); they aren't reachable through this app, since `next` only stringifies this project's own CSS at build time, and npm's only offered fix is downgrading `next` to version 9, which would be a regression, not a fix. Expect them to clear on a future `next` patch release.
+
+Run `npm audit` periodically going forward — new CVEs get disclosed against already-installed versions over time; this isn't a one-time task done at handoff.
 
 ---
 Built during a 10-week internship with The Tipi Raisers.
