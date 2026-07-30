@@ -21,6 +21,7 @@ This README is the operational guide for the staff and future developers who may
 11. [Migrations and schema changes](#11-migrations-and-schema-changes)
 12. [Launching to production](#12-launching-to-production)
 13. [Troubleshooting](#13-troubleshooting)
+14. [Known limitations](#14-known-limitations)
 
 ---
 
@@ -313,6 +314,69 @@ Recipes:
 
 > **Why some things are *not* in the database.** Mapbox base layers (`layerGroup.ts`) are intentionally code, not DB rows: editing raw Mapbox style-spec JSON in Studio is a poor authoring experience and a single typo would break the whole map. Adding a layer is a developer task — see the next section.
 
+### Worked example: authoring one Vision 2035 initiative
+
+This walks through building a real initiative end to end. Vision 2035 is a
+ten-year strategy made up of several named projects (Bison, TEC at the Hub,
+Homes, …), so the natural mapping is **one `Story` per initiative**, with each
+`StoryStep` a chapter of that initiative's narrative.
+
+Using **Vision 2035 — Bison** as the example:
+
+**1. Create the Story.** `Story` → Add record → `title` = `Vision 2035 — Bison`.
+Save; Prisma generates the `id`. Copy that id — every step references it.
+
+**2. Add the steps.** In `StoryStep`, one record per chapter. Suggested shape:
+
+| Field | Step 1 (intro) | Step 2 (the place) | Step 3 (impact) |
+| --- | --- | --- | --- |
+| `storyId` | *(the id from step 1)* | same | same |
+| `order` | `10` | `20` | `30` |
+| `title` | `Bringing the Buffalo Home` | `Pine Ridge Reservation` | `Where We Are Today` |
+| `content` | the narrative paragraph shown in the modal | … | … |
+| `modalPosition` | `CENTER` | `TOP_RIGHT` | `TOP_RIGHT` |
+| `latitude` / `longitude` | *(leave null — opens wide)* | `43.0` / `-102.5` | `43.0` / `-102.5` |
+| `zoom` | *(null)* | `8` | `9` |
+| `layersToShow` | `[]` | `[]` | `[]` |
+
+Use `order` values of 10/20/30 so you can insert a chapter later (15, 25)
+without renumbering everything.
+
+**3. Outline the land.** For a step that highlights an area (a reservation
+boundary, the Hub's acreage, a grazing range): draw it at
+[geojson.io](https://geojson.io/), copy just the `"geometry": { … }` value, and
+paste it into a new `DynamicPolygon` record with `storyStepId` set. Give it a
+clear `name` — that's what appears in the map legend. Both `Polygon` and
+`MultiPolygon` geometries are supported.
+
+**4. Drop markers.** For specific sites (the Hub in Lafayette CO, a wood-bank
+distribution point, a garden site), add `DynamicPoint` records with
+`latitude`, `longitude`, `name`, and `description`. The description is what
+readers see when they click the marker.
+
+**5. Add photos.** For each image, add a `MediaItem` with `storyStepId` set,
+`type = IMAGE`, `source` = the image URL, `alt` = a short description, and
+`order` ascending. They render above the narrative text, in `order`.
+
+**6. Click through it.** Run `npm run dev`, pick the initiative from the
+dropdown, and walk every step. This is the only reliable way to catch a
+mistyped coordinate (the camera flies somewhere unexpected) or a bad polygon
+(nothing appears and the legend stays empty).
+
+> **Tip — the dropdown is sorted alphabetically by title.** To control the
+> order initiatives appear in, prefix the titles (`1. Bison`, `2. Homes`, …)
+> or name them so alphabetical order is the order you want. There is no
+> separate ordering field on `Story` today (see
+> [Known limitations](#14-known-limitations)).
+
+**Seeding real content instead of hand-entering it.** Content lives in the
+database, so stories written on one machine don't automatically appear on
+another — *but a seed script does travel with the repo*. If you want a set of
+initiatives to exist on every fresh install (including the org's production
+database), add them to `packages/backend/prisma/seed.js` alongside the sample
+story and they become one `npm run db:seed` away. That is the only way to hand
+over prepared content through GitHub.
+
 ## 9. Adding a new map base layer (developer task)
 
 `layerGroup.ts` is a registry of base-map layers (roads, political boundaries, future custom tilesets) that staff can toggle from `StoryStep.layersToShow` / `layersToHide`.
@@ -532,6 +596,52 @@ Before flipping DNS, walk through:
 - CORS isn't blocking — Apollo Server's standalone mode allows all origins by default; if you've put it behind a proxy, add the frontend origin.
 
 **Studio shows no `SiteSettings` row.** The migration includes an `INSERT ... ON CONFLICT DO NOTHING`. If your DB pre-dates that migration, add the row manually with `id = 1` — the server's `siteSettings` resolver will also upsert on first read.
+
+**A story shows nothing at all when selected.** It probably has no `StoryStep`
+records yet. A story with zero steps is valid in the database and the API
+returns it happily, but there is nothing for the app to display, so the map
+just sits there. Add at least one step.
+
+## 14. Known limitations
+
+Things a future developer should know are *deliberately* incomplete, so nobody
+loses a day discovering them the hard way. None of these break the app.
+
+**`ImpactStat` is stored and served but never displayed.** The model exists,
+the `story` query fetches it, and the resolver returns it — but no component
+renders it, so filling in `ImpactStat` rows in Studio has no visible effect
+today. This is the natural home for the "progress / impact numbers" side of
+Vision 2035 and is the single biggest feature still on the table. Implementing
+it means building a component (a stats panel or an impact step) and reading
+`storyData.story.impactStats`, which already arrives with its media attached.
+
+**Marker popups show text only.** `DynamicPoint` supports `mediaItems` and the
+query fetches them, but the popup built in `MapCanvas.tsx` (`openPointPopup`)
+renders only name, description, and an optional link. Images or videos attached
+to a *point* will not appear. Media attached to a **step** does render, in the
+modal.
+
+**`DynamicPoint.renderType` is unused.** It's in the schema and the query, but
+the map decides between an icon and a circle purely by whether `markerImage`
+is set and its image loaded. Treat the field as reserved.
+
+**Stories are ordered alphabetically by title.** `Story` has no `order` column,
+so the dropdown sorts by `title` ascending. Prefix titles to control ordering,
+or add an `order` field (schema + migration + `orderBy` in the `stories`
+resolver) if a curated sequence matters.
+
+**One error anywhere fails the whole story.** The Apollo client sets no
+`errorPolicy`, so it uses the default (`none`): if any field in the `story`
+query errors, the client discards the entire response and the UI shows
+"We couldn't load this story" rather than rendering the parts that worked.
+This is deliberate for now — during setup you *want* loud failures — but it
+means a single malformed record takes down its whole initiative. If you'd
+rather degrade gracefully in production, set `errorPolicy: 'all'` on the query
+and adjust the error branch in `getCurrentModalState` so it only shows the
+error modal when `data` is genuinely absent.
+
+**No route back to the landing screen.** Once the map mounts, the splash page
+is gone until the browser is reloaded.
 
 ---
 Built during a 10-week internship with The Tipi Raisers.
