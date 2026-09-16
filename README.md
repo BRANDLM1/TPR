@@ -91,7 +91,7 @@ GeoJSON is **not** stored as a PostGIS geometry. `DynamicPoint` keeps `latitude`
 - `react-select` for the story dropdown
 
 **Backend** (`packages/backend`)
-- Apollo Server v5 (standalone, port 4000)
+- Apollo Server v5 on Express 5 (port 4000) — Express is there so CORS can be configured; see [§12](#12-launching-to-production)
 - Schema-first GraphQL (`schema.graphql`)
 - Prisma 6 ORM + Prisma Client
 - PostgreSQL
@@ -546,7 +546,7 @@ After the migration, verify in Prisma Studio (or any SQL client) that the `SiteS
 
 Then have staff open `SiteSettings` in Studio and customize the copy / URLs before launch.
 
-### Step 2 — Production build is ready; one edit remains (CORS)
+### Step 2 — Production build is ready; set one environment variable (CORS)
 
 The production build/start path already exists and has been verified end-to-end — you don't need to write it:
 
@@ -555,16 +555,60 @@ The production build/start path already exists and has been verified end-to-end 
 - The listen port reads from `process.env.PORT` (default 4000), so the host can inject it.
 - The server finds `schema.graphql` from the compiled location automatically (no copy step needed).
 
-**The one thing to do before exposing the backend publicly — tighten CORS.** Apollo's standalone mode allows all origins by default. Restrict it to the frontend's domain in `packages/backend/src/services/apollo.ts`:
+**Before exposing the backend publicly, set `CORS_ORIGIN`.** No code change is
+needed — add it alongside `DATABASE_URL` in your host's environment variables:
 
-```ts
-const { url } = await startStandaloneServer(server, {
-  context: async () => ({ prisma }),
-  listen: { port },
-  // add this — restrict to your production frontend origin(s)
-  cors: { origin: ['https://vision2035.thetipiraisers.org'] },
-});
 ```
+CORS_ORIGIN=https://vision2035.thetipiraisers.org
+```
+
+Several origins are comma-separated, which is useful if you keep a staging site:
+
+```
+CORS_ORIGIN=https://vision2035.thetipiraisers.org,https://staging.thetipiraisers.org
+```
+
+A value is an **origin** — scheme + host + port, with no trailing slash or path.
+Use `https://example.org`, not `https://example.org/` or `https://example.org/graphql`.
+
+Leave it unset locally: with no value, every origin is allowed, which is what
+you want while developing against `localhost:3000`. If it is unset while
+`NODE_ENV=production`, the server still starts — it will not take a live site
+down over a missing variable — but it prints a warning to the host's logs:
+
+```
+[cors] CORS_ORIGIN is not set — every origin is allowed. Set it to the frontend URL ...
+```
+
+On boot the server always logs what it settled on, so you can confirm it from
+the host's log tab without guessing:
+
+```
+Server ready at: http://localhost:4000/
+CORS allowed origins: https://vision2035.thetipiraisers.org
+```
+
+<details>
+<summary>What CORS is doing here, and why the server uses Express</summary>
+
+CORS is a browser rule: a page served from one origin cannot read responses
+from a different origin unless that server says it may. The frontend and
+backend are always different origins (different ports in development, usually
+different domains in production), so this applies to every request the map
+makes.
+
+This API is read-only — `schema.graphql` defines only `type Query`, there are
+no mutations, no login, and no cookies — so a permissive setting does not
+expose private data. What it does allow is any other website calling this
+backend from its visitors' browsers, serving the org's content at the org's
+hosting expense. That is the reason to set it.
+
+The server is built on Express rather than Apollo's simpler
+`startStandaloneServer` specifically because of this. That helper hardcodes
+`cors()` with no arguments — allow every origin — and accepts no CORS option,
+so on the standalone server there is no way to restrict origins at all.
+
+</details>
 
 > **Do not run `npm run db:seed` against production.** The seed inserts a *sample*
 > story for local proof-of-life. Production content is created by staff in Studio
@@ -629,7 +673,7 @@ Before flipping DNS, walk through:
 - [ ] At least one real `Story` with at least one `StoryStep` exists, otherwise the dropdown is empty.
 - [ ] The sample seed story is **not** in production (it's for local setup only — delete it if present).
 - [ ] Backend is reachable at the URL set in `NEXT_PUBLIC_GRAPHQL_ENDPOINT`.
-- [ ] Backend CORS allows the frontend's production origin.
+- [ ] `CORS_ORIGIN` is set on the backend host to the frontend's production origin (check the boot log: `CORS allowed origins: ...`).
 - [ ] Mapbox token has URL restrictions matching the production domain.
 - [ ] Mapbox token in production env vars is the org's, not yours.
 - [ ] Click through every story end-to-end on the staging URL once.
@@ -648,7 +692,7 @@ Before flipping DNS, walk through:
 
 **Stories dropdown is empty / "Unable to load stories".** The frontend can't reach the GraphQL endpoint. Verify:
 - Backend is running on the URL in `NEXT_PUBLIC_GRAPHQL_ENDPOINT`.
-- CORS isn't blocking — Apollo Server's standalone mode allows all origins by default; if you've put it behind a proxy, add the frontend origin.
+- CORS isn't blocking — check the backend's boot log for `CORS allowed origins:`. If it lists an origin that doesn't exactly match where the frontend is served from (scheme, host and port all have to match), fix `CORS_ORIGIN` on the host. In the browser console a CORS failure names the blocked origin explicitly.
 
 **Studio shows no `SiteSettings` row.** The migration includes an `INSERT ... ON CONFLICT DO NOTHING`. If your DB pre-dates that migration, add the row manually with `id = 1` — the server's `siteSettings` resolver will also upsert on first read.
 
