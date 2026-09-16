@@ -6,7 +6,7 @@ export default function Nav({ children }: { children?: React.ReactNode }) {
   const settings = useSiteSettings();
 
   return (
-    <nav className="fixed border-3 border-black top-0 left-0 z-50 w-full bg-white-100 backdrop-blur shadow-md">
+    <nav className="fixed border-3 border-black top-0 left-0 z-50 w-full bg-white/95 backdrop-blur shadow-md">
       {/* min-w-0 + truncate let the org name give up space first, so the
           story dropdown and the Donate/Contact buttons never collide on
           narrower windows. gap-8 keeps them from touching. */}

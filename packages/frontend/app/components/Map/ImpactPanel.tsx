@@ -13,6 +13,7 @@
 import { useEffect, useState } from 'react';
 import FadeIn from '../Animations/FadeIn';
 import type { MediaItem } from './StoryModal';
+import { safeUrl } from '../../lib/safeUrl';
 
 export interface ImpactStatItem {
   id: string;
@@ -64,6 +65,8 @@ export default function ImpactPanel({
 
   const stat = stats[Math.min(idx, stats.length - 1)];
   const image = stat.mediaItems?.find((m) => m.type === 'IMAGE');
+  // Authored in Studio, so screen out javascript:/data: before it hits href.
+  const statLink = safeUrl(stat.link);
 
   return (
     <div className="pointer-events-auto">
@@ -113,9 +116,9 @@ export default function ImpactPanel({
             {stat.content && (
               <p className="text-sm font-lato text-gray-700 mt-1">{stat.content}</p>
             )}
-            {stat.link && (
+            {statLink && (
               <a
-                href={stat.link}
+                href={statLink}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm font-lato underline text-amber-700 hover:text-amber-900 mt-1 inline-block"

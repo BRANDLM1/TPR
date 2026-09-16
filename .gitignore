@@ -30,3 +30,11 @@ node_modules
 **/tipiraisers-*.json
 **/*-service-account*.json
 *.gcp.json
+
+# Claude Code local worktrees / scratch — never part of the project
+.claude/worktrees/
+
+# npm workspaces: only the ROOT package-lock.json is authoritative.
+# Per-package locks are ignored by npm and confuse Next.js workspace-root
+# inference, so keep them from coming back.
+packages/*/package-lock.json

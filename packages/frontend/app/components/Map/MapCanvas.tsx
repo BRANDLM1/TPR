@@ -8,6 +8,7 @@ import ImpactPanel from './ImpactPanel';
 import type { ImpactStatItem } from './ImpactPanel';
 import { useQuery } from '@apollo/client';
 import { GET_STORY_BY_ID, GET_ICONS } from '../../lib/queries';
+import { safeUrl } from '../../lib/safeUrl';
 import Nav from '../Global/Nav';
 import dynamic from 'next/dynamic'
 const Dropdown = dynamic(() => import('../Global/Dropdown'), {ssr: false});
@@ -254,9 +255,12 @@ export default function MapContainer() {
           container.appendChild(desc);
         }
 
-        if (props.link) {
+        // safeUrl drops javascript:/data: hrefs — this anchor is built with
+        // raw DOM calls, which do no scheme filtering of their own.
+        const linkHref = safeUrl(props.link);
+        if (linkHref) {
           const anchor = document.createElement('a');
-          anchor.href = props.link;
+          anchor.href = linkHref;
           anchor.textContent = 'Learn more';
           anchor.target = '_blank';
           anchor.rel = 'noopener noreferrer';
