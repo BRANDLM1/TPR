@@ -186,6 +186,25 @@ npm run db:studio
 
 `.env.local` lives at the repo root and is read by **both** workspaces via `dotenv-cli` (see each workspace's `dev` script). The same file holds backend secrets (`DATABASE_URL`) and public frontend values (`NEXT_PUBLIC_*`).
 
+> **Two files feed the frontend, and they must agree.** `npm run dev` loads the
+> root `.env.local` through `dotenv-cli`, but `npm run build --workspace=frontend`
+> is a plain `next build` — it never sees the root file and reads only
+> `packages/frontend/.env.local`. So a value can be correct in development and
+> wrong (or absent) in a local production build. Keep `NEXT_PUBLIC_GRAPHQL_ENDPOINT`
+> and `NEXT_PUBLIC_MAPBOX_TOKEN` identical in both files, or you will chase a
+> bug that only reproduces after `npm run build`.
+>
+> This bites harder than a normal config mistake because `NEXT_PUBLIC_*` values
+> are **inlined into the JavaScript bundle at build time**, not read at runtime —
+> a wrong value is frozen into the deployed site. `app/lib/apollo.ts` now
+> validates `NEXT_PUBLIC_GRAPHQL_ENDPOINT` and logs a console error rather than
+> silently 404ing against the page origin, which is how this was caught.
+>
+> On a real deploy none of this applies: Vercel/Render inject env vars directly
+> (see [§12](#12-launching-to-production)) and no `.env` file is used. Symptom to
+> recognize: the app works with `npm run dev`, but a built copy shows an empty
+> story dropdown and "We couldn't load this story".
+
 ## 6. Running locally
 
 From the repo root:
